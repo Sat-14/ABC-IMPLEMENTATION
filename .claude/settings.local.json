@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:\\\\Users\\\\pulak\\\\Desktop\\\\ABC-IMPLEMENTATION\" log --oneline --all)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(del \"c:\\\\Users\\\\pulak\\\\Desktop\\\\ABC-IMPLEMENTATION\\\\frontend\\\\src\\\\App.css\")",
+      "Bash(npm run build:*)",
+      "Bash(python -c:*)",
+      "Bash(python -m venv:*)",
+      "Bash(venvScriptspip:*)",
+      "Bash(\"venv/Scripts/pip\" install -r requirements.txt)",
+      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''App factory imports OK''\\)\")"
+    ]
+  }
+}
