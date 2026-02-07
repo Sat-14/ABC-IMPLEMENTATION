@@ -22,7 +22,11 @@ from app.extensions import mongo
 @evidence_bp.route("/", methods=["POST"])
 @permission_required(Permissions.UPLOAD)
 def upload_evidence():
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
 
     if "file" not in request.files:
         raise APIError("No file provided")
@@ -56,7 +60,7 @@ def upload_evidence():
         classification=request.form.get("classification", "internal"),
         description=request.form.get("description", ""),
         tags=request.form.get("tags", ""),
-        uploaded_by_id=identity["user_id"],
+        uploaded_by_id=user["user_id"],
     )
 
     from app.audit.services import log_action
@@ -64,9 +68,9 @@ def upload_evidence():
         action="evidence_uploaded",
         entity_type="evidence",
         entity_id=evidence["evidence_id"],
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Uploaded {original_name} to case {case['case_number']}",
         metadata={
             "file_name": original_name,
@@ -100,7 +104,12 @@ def list_evidence():
 @evidence_bp.route("/<evidence_id>", methods=["GET"])
 @jwt_required()
 def get_evidence_route(evidence_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     ev = get_evidence(evidence_id)
     if not ev:
         raise NotFoundError("Evidence not found")
@@ -110,9 +119,9 @@ def get_evidence_route(evidence_id):
         action="evidence_viewed",
         entity_type="evidence",
         entity_id=evidence_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Viewed evidence {ev['file_name']}",
     )
 
@@ -122,7 +131,12 @@ def get_evidence_route(evidence_id):
 @evidence_bp.route("/<evidence_id>", methods=["PATCH"])
 @permission_required(Permissions.UPLOAD)
 def update_evidence_route(evidence_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     data = request.get_json() or {}
 
     ev = update_evidence(evidence_id, data)
@@ -134,9 +148,9 @@ def update_evidence_route(evidence_id):
         action="evidence_updated",
         entity_type="evidence",
         entity_id=evidence_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Updated evidence metadata for {ev['file_name']}",
     )
 
@@ -146,7 +160,12 @@ def update_evidence_route(evidence_id):
 @evidence_bp.route("/<evidence_id>", methods=["DELETE"])
 @permission_required(Permissions.DELETE)
 def delete_evidence_route(evidence_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     ev = get_evidence(evidence_id)
     if not ev:
         raise NotFoundError("Evidence not found")
@@ -162,9 +181,9 @@ def delete_evidence_route(evidence_id):
         action="evidence_deleted",
         entity_type="evidence",
         entity_id=evidence_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Soft-deleted evidence {ev['file_name']}",
     )
 
@@ -174,9 +193,13 @@ def delete_evidence_route(evidence_id):
 @evidence_bp.route("/<evidence_id>/verify", methods=["POST"])
 @permission_required(Permissions.VERIFY)
 def verify_evidence_route(evidence_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
 
-    result = verify_evidence_integrity(evidence_id, identity["user_id"])
+    result = verify_evidence_integrity(evidence_id, user["user_id"])
     if not result:
         raise NotFoundError("Evidence not found")
 
@@ -186,9 +209,9 @@ def verify_evidence_route(evidence_id):
         action=action,
         entity_type="evidence",
         entity_id=evidence_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Integrity verification: {'INTACT' if result['matches'] else 'TAMPERED'}",
         metadata={"current_hash": result["current_hash"], "matches": result["matches"]},
     )
@@ -206,7 +229,11 @@ def evidence_hash_history(evidence_id):
 @evidence_bp.route("/<evidence_id>/download", methods=["GET"])
 @jwt_required()
 def download_evidence(evidence_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
 
     ev = mongo.db.evidence.find_one({"evidence_id": evidence_id})
     if not ev:
@@ -217,9 +244,9 @@ def download_evidence(evidence_id):
         action="evidence_downloaded",
         entity_type="evidence",
         entity_id=evidence_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Downloaded evidence {ev['file_name']}",
     )
 

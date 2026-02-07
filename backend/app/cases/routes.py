@@ -13,29 +13,44 @@ from app.extensions import mongo
 @cases_bp.route("/", methods=["POST"])
 @permission_required(Permissions.UPLOAD)
 def create_case_route():
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    print(f"DEBUG: create_case_route called with user_id: {user_id}")
+    
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     data = request.get_json() or {}
-    validate_required_fields(data, ["title"])
+    print(f"DEBUG: create_case_route data: {data}")
+    
+    try:
+        validate_required_fields(data, ["title"])
 
-    case = create_case(
-        title=data["title"],
-        description=data.get("description", ""),
-        created_by_id=identity["user_id"],
-        created_by_name=identity.get("email", ""),
-    )
+        case = create_case(
+            title=data["title"],
+            description=data.get("description", ""),
+            created_by_id=user["user_id"],
+            created_by_name=user.get("full_name") or user.get("email"),
+        )
 
-    from app.audit.services import log_action
-    log_action(
-        action="case_created",
-        entity_type="case",
-        entity_id=case["case_id"],
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
-        details=f"Created case {case['case_number']}: {case['title']}",
-    )
+        from app.audit.services import log_action
+        log_action(
+            action="case_created",
+            entity_type="case",
+            entity_id=case["case_id"],
+            user_id=user["user_id"],
+            user_email=user["email"],
+            user_role=user["role"],
+            details=f"Created case {case['case_number']}: {case['title']}",
+        )
 
-    return jsonify({"case": case}), 201
+        return jsonify({"case": case}), 201
+    except Exception as e:
+        import traceback
+        print(f"ERROR in create_case_route: {str(e)}")
+        traceback.print_exc()
+        raise e
 
 
 @cases_bp.route("/", methods=["GET"])
@@ -62,22 +77,39 @@ def get_case_route(case_id):
 @cases_bp.route("/<case_id>", methods=["PATCH"])
 @permission_required(Permissions.UPLOAD)
 def update_case_route(case_id):
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     data = request.get_json() or {}
+    
+    # If closing, inject metadata
+    if data.get("status") == "closed":
+        from datetime import datetime, timezone
+        data["closed_at"] = datetime.now(timezone.utc)
+        data["closed_by"] = user["user_id"]
+        data["closed_by_name"] = user.get("full_name") or user.get("email")
 
     case = update_case(case_id, data)
     if not case:
         raise APIError("Case not found or no valid fields to update", 400)
 
     from app.audit.services import log_action
+    action = "case_closed" if data.get("status") == "closed" else "case_updated"
+    details = f"Closed case {case['case_number']}. Reason: {data.get('closing_reason')}" if action == "case_closed" else f"Updated case {case['case_number']}"
+    
     log_action(
-        action="case_updated",
+        action=action,
         entity_type="case",
         entity_id=case_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
-        details=f"Updated case {case['case_number']}",
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
+        details=details,
+        metadata={"reason": data.get("closing_reason")} if action == "case_closed" else None
     )
 
     return jsonify({"case": case})

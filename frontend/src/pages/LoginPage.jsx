@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Shield, Mail, Lock, ArrowRight } from 'lucide-react'
 import useAuth from '../hooks/useAuth'
+import { Button } from '../components/common/Button'
+import { Input } from '../components/common/Input'
+import { Card } from '../components/common/Card'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -30,60 +34,82 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-bg-secondary">
+      {/* Ambient Background - Subtle Light Mode Gradients */}
+      <div className="absolute top-[-20%] left-[-20%] w-[50%] h-[50%] bg-blue-100/50 rounded-full blur-3xl opacity-60" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[50%] h-[50%] bg-cyan-100/50 rounded-full blur-3xl opacity-60" />
+
+      <Card className="w-full max-w-md relative z-10 border-border-subtle bg-white/80 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
-          <div className="inline-block bg-blue-600 text-white rounded-lg px-4 py-2 font-bold text-lg mb-2">
-            DCoC
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-primary-600 to-cyan-600 mb-4 shadow-lg shadow-primary-500/20">
+            <Shield className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Digital Chain of Custody</h1>
-          <p className="text-gray-500 mt-1">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Welcome Back</h1>
+          <p className="text-text-secondary mt-2 text-sm">Sign in to Digital Chain of Custody</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md text-sm">
+            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
+          <div className="space-y-4">
+            <Input
+              label="Email Address"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="you@example.com"
+              placeholder="name@agency.gov"
+              icon={Mail}
+              autoComplete="email"
+              className="bg-white"
             />
+
+            <div className="space-y-1.5">
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="Enter your password"
+                icon={Lock}
+                autoComplete="current-password"
+                className="bg-white"
+              />
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your password"
-            />
-          </div>
-
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="w-full shadow-lg shadow-primary-500/20"
+            isLoading={loading}
+            size="lg"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+            Sign In
+            <ArrowRight className="w-4 h-4" />
+          </Button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-text-tertiary">
             Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
+            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
+              Create Account
+            </Link>
           </p>
         </form>
+      </Card>
+
+      <div className="absolute bottom-6 text-center text-xs text-text-tertiary">
+        &copy; {new Date().getFullYear()} DCoC Secure Systems. Authorized access only.
       </div>
     </div>
   )

@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Shield, User, Mail, Lock, Building, Briefcase, ArrowRight } from 'lucide-react'
 import useAuth from '../hooks/useAuth'
 import { ROLE_LABELS } from '../utils/roles'
+import { Button } from '../components/common/Button'
+import { Input, Select } from '../components/common/Input'
+import { Card } from '../components/common/Card'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -40,102 +44,116 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-bg-secondary">
+      {/* Ambient Background - Light Mode */}
+      <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] bg-blue-100/50 rounded-full blur-3xl opacity-60" />
+      <div className="absolute bottom-[-20%] left-[-20%] w-[50%] h-[50%] bg-cyan-100/50 rounded-full blur-3xl opacity-60" />
+
+      <Card className="w-full max-w-lg relative z-10 border-border-subtle bg-white/80 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
-          <div className="inline-block bg-blue-600 text-white rounded-lg px-4 py-2 font-bold text-lg mb-2">
-            DCoC
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-primary-600 to-cyan-600 mb-4 shadow-lg shadow-primary-500/20">
+            <Shield className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-1">Register for Digital Chain of Custody</p>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Create Account</h1>
+          <p className="text-text-secondary mt-2 text-sm">Join the Digital Chain of Custody Network</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md text-sm">
+            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input
-              type="text"
-              name="full_name"
-              value={form.full_name}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Jane Doe"
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Full Name"
+                name="full_name"
+                value={form.full_name}
+                onChange={handleChange}
+                required
+                placeholder="Officer Jane Doe"
+                icon={User}
+                className="bg-white"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
-          </div>
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Email Address"
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+                placeholder="name@agency.gov"
+                icon={Mail}
+                className="bg-white"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              minLength={6}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Minimum 6 characters"
-            />
-          </div>
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Password"
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+                placeholder="Min. 6 characters"
+                icon={Lock}
+                className="bg-white"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select
+            <Select
+              label="Role"
               name="role"
               value={form.role}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              icon={Briefcase}
+              className="bg-white"
             >
               {Object.entries(ROLE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
-            </select>
-          </div>
+            </Select>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <input
-              type="text"
+            <Input
+              label="Department"
               name="department"
               value={form.department}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g. Cyber Crime Unit"
+              placeholder="Unit / Division"
+              icon={Building}
+              className="bg-white"
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="w-full shadow-lg shadow-primary-500/20"
+            isLoading={loading}
+            size="lg"
           >
-            {loading ? 'Creating account...' : 'Create Account'}
-          </button>
+            Create Account
+            <ArrowRight className="w-4 h-4" />
+          </Button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-text-tertiary">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-600 hover:underline">Sign in</Link>
+            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
+              Sign In
+            </Link>
           </p>
         </form>
+      </Card>
+
+      <div className="absolute bottom-6 text-center text-xs text-text-tertiary">
+        &copy; {new Date().getFullYear()} DCoC Secure Systems. Authorized access only.
       </div>
     </div>
   )

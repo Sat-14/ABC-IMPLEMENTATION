@@ -1,8 +1,76 @@
 @import "tailwindcss";
 
+@theme {
+  --color-slate-850: oklch(0.17 0.03 260);
+
+  /* Semantic Colors - Light Mode Only */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-elevated: var(--bg-elevated);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-hover: var(--border-hover);
+
+  --color-primary-600: oklch(0.55 0.22 250);
+  --color-primary-500: oklch(0.65 0.20 250);
+}
+
+:root {
+  color-scheme: light;
+
+  /* Light Mode Palette */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --bg-tertiary: #F1F5F9;
+  --bg-elevated: #FFFFFF;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+
+  --border-subtle: #E2E8F0;
+  --border-hover: #93C5FD;
+}
+
 body {
-  margin: 0;
-  min-height: 100vh;
-  background-color: #f8fafc;
+  @apply bg-bg-primary text-text-primary antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  @apply bg-white/80 backdrop-blur-lg border border-border-subtle shadow-sm;
+}
+
+.glass-card {
+  @apply bg-bg-elevated/70 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+.glass-panel {
+  @apply bg-bg-secondary/90 backdrop-blur-xl border-r border-border-subtle;
+}
+
+/* Typography Gradients */
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bg-primary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
 }

@@ -50,9 +50,10 @@ def register():
         department=data.get("department", ""),
     )
 
-    identity = _make_identity(user)
-    access_token = create_access_token(identity=identity)
-    refresh_token = create_refresh_token(identity=identity)
+    # Use string ID for identity to avoid "Subject must be a string" error
+    # We'll fetch user details in protected routes if needed, or stick to simple claims
+    access_token = create_access_token(identity=str(user["user_id"]))
+    refresh_token = create_refresh_token(identity=str(user["user_id"]))
 
     from app.audit.services import log_action
     log_action(
@@ -84,9 +85,9 @@ def login():
     if not user.get("is_active", True):
         raise APIError("Account is deactivated", 403)
 
-    identity = _make_identity(user)
-    access_token = create_access_token(identity=identity)
-    refresh_token = create_refresh_token(identity=identity)
+    # Use string ID for identity
+    access_token = create_access_token(identity=str(user["user_id"]))
+    refresh_token = create_refresh_token(identity=str(user["user_id"]))
 
     from app.audit.services import log_action
     log_action(
@@ -109,8 +110,8 @@ def login():
 @auth_bp.route("/refresh", methods=["POST"])
 @jwt_required(refresh=True)
 def refresh():
-    identity = get_jwt_identity()
-    access_token = create_access_token(identity=identity)
+    current_user_id = get_jwt_identity()
+    access_token = create_access_token(identity=current_user_id)
     return jsonify({"access_token": access_token})
 
 
@@ -118,7 +119,8 @@ def refresh():
 @jwt_required()
 def me():
     identity = get_jwt_identity()
-    user = find_user_by_id(identity["user_id"])
+    user_id = identity.get("user_id") if isinstance(identity, dict) else identity
+    user = find_user_by_id(user_id)
     if not user:
         raise APIError("User not found", 404)
     return jsonify({"user": sanitize_user(user)})
@@ -132,10 +134,36 @@ def list_users():
 
 
 @auth_bp.route("/users/<user_id>", methods=["PATCH"])
-@role_required(Roles.ADMIN)
+@jwt_required()
 def update_user_route(user_id):
+    identity = get_jwt_identity()
+    current_user_id = identity.get("user_id") if isinstance(identity, dict) else identity
+    current_user = find_user_by_id(current_user_id)
+    
+    # Allow users to update their own profile, or admins to update any profile
+    if str(current_user_id) != str(user_id) and current_user.get("role") != Roles.ADMIN:
+        raise APIError("Unauthorized: You can only update your own profile", 403)
+    
     data = request.get_json() or {}
+    
+    # Non-admin users can only update specific fields
+    if current_user.get("role") != Roles.ADMIN:
+        allowed_fields = {"full_name", "email", "department"}
+        data = {k: v for k, v in data.items() if k in allowed_fields}
+    
     user = update_user(user_id, data)
     if not user:
         raise APIError("User not found or no valid fields to update", 400)
+    
+    from app.audit.services import log_action
+    log_action(
+        action="user_profile_updated",
+        entity_type="user",
+        entity_id=user["user_id"],
+        user_id=current_user_id,
+        user_email=current_user.get("email"),
+        user_role=current_user.get("role"),
+        details=f"User {user['full_name']} profile updated",
+    )
+    
     return jsonify({"user": sanitize_user(user)})

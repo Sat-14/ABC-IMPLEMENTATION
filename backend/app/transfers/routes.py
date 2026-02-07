@@ -18,13 +18,18 @@ from app.transfers.services import (
 @transfers_bp.route("/", methods=["POST"])
 @jwt_required()
 def request_transfer():
-    identity = get_jwt_identity()
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
     data = request.get_json() or {}
     validate_required_fields(data, ["evidence_id", "to_user_id", "reason"])
 
     transfer = create_transfer(
         evidence_id=data["evidence_id"],
-        from_user_id=identity["user_id"],
+        from_user_id=user["user_id"],
         to_user_id=data["to_user_id"],
         reason=data["reason"],
     )
@@ -34,9 +39,9 @@ def request_transfer():
         action="transfer_requested",
         entity_type="transfer",
         entity_id=transfer["transfer_id"],
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Transfer requested: {transfer['evidence_name']} to {transfer['to_user_name']}",
         metadata={"evidence_id": data["evidence_id"], "to_user_id": data["to_user_id"]},
     )
@@ -72,17 +77,22 @@ def get_transfer_route(transfer_id):
 @transfers_bp.route("/<transfer_id>/approve", methods=["PATCH"])
 @jwt_required()
 def approve_transfer_route(transfer_id):
-    identity = get_jwt_identity()
-    transfer = approve_transfer(transfer_id, identity["user_id"])
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    transfer = approve_transfer(transfer_id, user["user_id"])
 
     from app.audit.services import log_action
     log_action(
         action="transfer_approved",
         entity_type="transfer",
         entity_id=transfer_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Transfer approved: {transfer['evidence_name']}",
     )
 
@@ -92,17 +102,22 @@ def approve_transfer_route(transfer_id):
 @transfers_bp.route("/<transfer_id>/reject", methods=["PATCH"])
 @jwt_required()
 def reject_transfer_route(transfer_id):
-    identity = get_jwt_identity()
-    transfer = reject_transfer(transfer_id, identity["user_id"])
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    transfer = reject_transfer(transfer_id, user["user_id"])
 
     from app.audit.services import log_action
     log_action(
         action="transfer_rejected",
         entity_type="transfer",
         entity_id=transfer_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Transfer rejected: {transfer['evidence_name']}",
     )
 
@@ -112,17 +127,22 @@ def reject_transfer_route(transfer_id):
 @transfers_bp.route("/<transfer_id>/complete", methods=["PATCH"])
 @jwt_required()
 def complete_transfer_route(transfer_id):
-    identity = get_jwt_identity()
-    transfer = complete_transfer(transfer_id, identity["user_id"])
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    transfer = complete_transfer(transfer_id, user["user_id"])
 
     from app.audit.services import log_action
     log_action(
         action="transfer_completed",
         entity_type="transfer",
         entity_id=transfer_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Transfer completed: {transfer['evidence_name']} to {transfer['to_user_name']}",
     )
 
@@ -132,17 +152,22 @@ def complete_transfer_route(transfer_id):
 @transfers_bp.route("/<transfer_id>/cancel", methods=["PATCH"])
 @jwt_required()
 def cancel_transfer_route(transfer_id):
-    identity = get_jwt_identity()
-    transfer = cancel_transfer(transfer_id, identity["user_id"])
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    transfer = cancel_transfer(transfer_id, user["user_id"])
 
     from app.audit.services import log_action
     log_action(
         action="transfer_cancelled",
         entity_type="transfer",
         entity_id=transfer_id,
-        user_id=identity["user_id"],
-        user_email=identity["email"],
-        user_role=identity["role"],
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
         details=f"Transfer cancelled: {transfer['evidence_name']}",
     )
 

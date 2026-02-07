@@ -15,6 +15,7 @@ def create_app(config_name=None):
     # Initialize extensions
     mongo.init_app(app)
     jwt.init_app(app)
+    register_jwt_debug_handlers(jwt)
     cors.init_app(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
 
     # Register blueprints
@@ -23,12 +24,14 @@ def create_app(config_name=None):
     from app.cases import cases_bp
     from app.transfers import transfers_bp
     from app.audit import audit_bp
+    from app.search import search_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(evidence_bp, url_prefix="/api/evidence")
     app.register_blueprint(cases_bp, url_prefix="/api/cases")
     app.register_blueprint(transfers_bp, url_prefix="/api/transfers")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
+    app.register_blueprint(search_bp, url_prefix="/api/search")
 
     # Register error handlers
     register_error_handlers(app)
@@ -69,3 +72,20 @@ def _create_indexes(db):
 
     db.hash_records.create_index("evidence_id")
     db.hash_records.create_index("computed_at")
+
+
+def register_jwt_debug_handlers(jwt):
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        print(f"DEBUG: Invalid token error: {error}")
+        return {"msg": f"Invalid token: {error}"}, 422
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        print(f"DEBUG: Missing token error: {error}")
+        return {"msg": f"Missing token: {error}"}, 401
+    
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        print(f"DEBUG: Expired token: {jwt_payload}")
+        return {"msg": "Token has expired"}, 401
