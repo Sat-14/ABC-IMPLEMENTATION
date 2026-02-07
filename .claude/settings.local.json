@@ -10,7 +10,8 @@
       "Bash(python -m venv:*)",
       "Bash(venvScriptspip:*)",
       "Bash(\"venv/Scripts/pip\" install -r requirements.txt)",
-      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''App factory imports OK''\\)\")"
+      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''App factory imports OK''\\)\")",
+      "Bash(\"venv/Scripts/pip\" install reportlab==4.4.0 Pillow==11.1.0)"
     ]
   }
 }
