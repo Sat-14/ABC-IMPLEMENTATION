@@ -216,6 +216,12 @@ def verify_evidence_route(evidence_id):
         metadata={"current_hash": result["current_hash"], "matches": result["matches"]},
     )
 
+    if not result["matches"]:
+        ev = mongo.db.evidence.find_one({"evidence_id": evidence_id})
+        if ev:
+            from app.notifications.services import notify_integrity_failure
+            notify_integrity_failure(ev.get("current_custodian_id"), ev.get("file_name", "Unknown"), evidence_id)
+
     return jsonify(result)
 
 
@@ -255,3 +261,60 @@ def download_evidence(evidence_id):
         as_attachment=True,
         download_name=ev["file_name"],
     )
+
+
+@evidence_bp.route("/<evidence_id>/preview", methods=["GET"])
+@jwt_required()
+def preview_evidence(evidence_id):
+    """Serve evidence file for in-browser preview with watermark metadata."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    ev = mongo.db.evidence.find_one({"evidence_id": evidence_id})
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    import mimetypes
+    mime = ev.get("file_type") or mimetypes.guess_type(ev["file_name"])[0] or "application/octet-stream"
+
+    # For images, apply watermark
+    previewable_images = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    if mime in previewable_images:
+        from app.evidence.preview import create_watermarked_image
+        watermarked = create_watermarked_image(
+            ev["file_path"],
+            user["full_name"],
+            user["email"],
+        )
+        if watermarked:
+            from app.audit.services import log_action
+            log_action(
+                action="evidence_viewed",
+                entity_type="evidence",
+                entity_id=evidence_id,
+                user_id=user["user_id"],
+                user_email=user["email"],
+                user_role=user["role"],
+                details=f"Previewed evidence {ev['file_name']} (watermarked)",
+            )
+            return send_file(watermarked, mimetype=mime)
+
+    # For PDFs and text, serve directly (watermark handled client-side)
+    previewable = {"application/pdf", "text/plain", "text/csv", "application/json", "text/html"}
+    if mime in previewable:
+        from app.audit.services import log_action
+        log_action(
+            action="evidence_viewed",
+            entity_type="evidence",
+            entity_id=evidence_id,
+            user_id=user["user_id"],
+            user_email=user["email"],
+            user_role=user["role"],
+            details=f"Previewed evidence {ev['file_name']}",
+        )
+        return send_file(ev["file_path"], mimetype=mime)
+
+    return jsonify({"error": "Preview not available for this file type", "mime_type": mime}), 415

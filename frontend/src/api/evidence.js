@@ -25,3 +25,6 @@ export const getEvidenceHistory = (evidenceId) =>
 
 export const downloadEvidence = (evidenceId) =>
   client.get(`/evidence/${evidenceId}/download`, { responseType: 'blob' })
+
+export const previewEvidence = (evidenceId) =>
+  client.get(`/evidence/${evidenceId}/preview`, { responseType: 'blob' })

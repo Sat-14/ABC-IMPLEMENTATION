@@ -25,6 +25,8 @@ def create_app(config_name=None):
     from app.transfers import transfers_bp
     from app.audit import audit_bp
     from app.search import search_bp
+    from app.reports import reports_bp
+    from app.notifications import notifications_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(evidence_bp, url_prefix="/api/evidence")
@@ -32,6 +34,8 @@ def create_app(config_name=None):
     app.register_blueprint(transfers_bp, url_prefix="/api/transfers")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
     app.register_blueprint(search_bp, url_prefix="/api/search")
+    app.register_blueprint(reports_bp, url_prefix="/api/reports")
+    app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
 
     # Register error handlers
     register_error_handlers(app)
@@ -72,6 +76,10 @@ def _create_indexes(db):
 
     db.hash_records.create_index("evidence_id")
     db.hash_records.create_index("computed_at")
+
+    db.notifications.create_index("user_id")
+    db.notifications.create_index([("user_id", 1), ("is_read", 1)])
+    db.notifications.create_index("created_at")
 
 
 def register_jwt_debug_handlers(jwt):

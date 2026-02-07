@@ -1,7 +1,7 @@
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.common.errors import NotFoundError
+from app.common.errors import APIError, NotFoundError
 from app.common.validators import validate_required_fields
 from app.transfers import transfers_bp
 from app.transfers.services import (
@@ -45,6 +45,9 @@ def request_transfer():
         details=f"Transfer requested: {transfer['evidence_name']} to {transfer['to_user_name']}",
         metadata={"evidence_id": data["evidence_id"], "to_user_id": data["to_user_id"]},
     )
+
+    from app.notifications.services import notify_transfer_requested
+    notify_transfer_requested(data["to_user_id"], user["full_name"], transfer["evidence_name"], data["evidence_id"])
 
     return jsonify({"transfer": transfer}), 201
 
@@ -96,6 +99,9 @@ def approve_transfer_route(transfer_id):
         details=f"Transfer approved: {transfer['evidence_name']}",
     )
 
+    from app.notifications.services import notify_transfer_approved
+    notify_transfer_approved(transfer["from_user_id"], user["full_name"], transfer["evidence_name"])
+
     return jsonify({"transfer": transfer})
 
 
@@ -121,6 +127,9 @@ def reject_transfer_route(transfer_id):
         details=f"Transfer rejected: {transfer['evidence_name']}",
     )
 
+    from app.notifications.services import notify_transfer_rejected
+    notify_transfer_rejected(transfer["from_user_id"], user["full_name"], transfer["evidence_name"])
+
     return jsonify({"transfer": transfer})
 
 
@@ -145,6 +154,9 @@ def complete_transfer_route(transfer_id):
         user_role=user["role"],
         details=f"Transfer completed: {transfer['evidence_name']} to {transfer['to_user_name']}",
     )
+
+    from app.notifications.services import notify_transfer_completed
+    notify_transfer_completed(transfer["to_user_id"], user["full_name"], transfer["evidence_name"], transfer["evidence_id"])
 
     return jsonify({"transfer": transfer})
 

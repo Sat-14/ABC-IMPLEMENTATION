@@ -3,12 +3,14 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Calendar, FileText, Shield,
   HardDrive, Clock, Hash, Download, Eye,
-  CheckCircle, AlertTriangle
+  CheckCircle, AlertTriangle, History
 } from 'lucide-react'
 import { getCase, getCaseEvidence } from '../api/cases'
+import { downloadCaseReport } from '../api/reports'
 import { formatDate, formatFileSize } from '../utils/formatters'
 import StatusBadge from '../components/common/StatusBadge'
 import IntegrityBadge from '../components/common/IntegrityBadge'
+import CaseTimeline from '../components/cases/CaseTimeline'
 import { Card } from '../components/common/Card'
 import { Badge } from '../components/common/Badge'
 import { Button } from '../components/common/Button'
@@ -22,6 +24,8 @@ export default function CaseDetailPage() {
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [closingReason, setClosingReason] = useState('')
   const [isClosing, setIsClosing] = useState(false)
+  const [activeTab, setActiveTab] = useState('evidence')
+  const [downloadingReport, setDownloadingReport] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -58,6 +62,25 @@ export default function CaseDetailPage() {
       setError('Failed to close case')
     } finally {
       setIsClosing(false)
+    }
+  }
+
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true)
+    try {
+      const res = await downloadCaseReport(id)
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `case-${caseData?.case_number || id}-report.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      setError('Failed to generate report')
+    } finally {
+      setDownloadingReport(false)
     }
   }
 
@@ -126,6 +149,14 @@ export default function CaseDetailPage() {
             </div>
           </div>
           <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+            >
+              <Download className="w-4 h-4 mr-1.5" />
+              {downloadingReport ? 'Generating...' : 'PDF Report'}
+            </Button>
             {caseData.status !== 'closed' && (
               <Button
                 variant="ghost"
@@ -214,21 +245,45 @@ export default function CaseDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Main Content - Evidence List */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Tab Switcher */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <HardDrive className="w-5 h-5 text-primary-600" />
-              Evidence Files
-            </h2>
-            <Link to="/evidence/upload">
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Evidence
-              </Button>
-            </Link>
+            <div className="flex gap-1 bg-bg-secondary/50 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveTab('evidence')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'evidence' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                <HardDrive className="w-4 h-4" />
+                Evidence ({evidence.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('timeline')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'timeline' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                <History className="w-4 h-4" />
+                Timeline
+              </button>
+            </div>
+            {activeTab === 'evidence' && (
+              <Link to="/evidence/upload">
+                <Button size="sm">
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Add Evidence
+                </Button>
+              </Link>
+            )}
           </div>
 
+          {/* Timeline Tab */}
+          {activeTab === 'timeline' && (
+            <Card className="p-6">
+              <CaseTimeline caseId={id} />
+            </Card>
+          )}
+
+          {/* Evidence Tab */}
+          {activeTab === 'evidence' && (
           <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-border-subtle">
             {evidence.length === 0 ? (
               <div className="text-center py-16 bg-bg-primary/50">
@@ -287,6 +342,7 @@ export default function CaseDetailPage() {
               </div>
             )}
           </Card>
+          )}
         </div>
 
         {/* Sidebar - Case Info */}

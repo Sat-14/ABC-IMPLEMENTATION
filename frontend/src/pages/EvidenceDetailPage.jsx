@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getEvidence, verifyEvidence, getEvidenceHistory, downloadEvidence } from '../api/evidence'
+import { getEvidence, verifyEvidence, getEvidenceHistory, downloadEvidence, previewEvidence } from '../api/evidence'
+import { downloadEvidenceReport } from '../api/reports'
 import { getEvidenceAuditLogs } from '../api/audit'
 import { requestTransfer } from '../api/transfers'
 import { getUsers } from '../api/auth'
@@ -22,6 +23,10 @@ export default function EvidenceDetailPage() {
   const [showTransfer, setShowTransfer] = useState(false)
   const [transferForm, setTransferForm] = useState({ to_user_id: '', reason: '' })
   const [users, setUsers] = useState([])
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [downloadingReport, setDownloadingReport] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -107,6 +112,50 @@ export default function EvidenceDetailPage() {
     }
   }
 
+  const handlePreview = async () => {
+    setPreviewLoading(true)
+    setShowPreview(true)
+    try {
+      const res = await previewEvidence(id)
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers['content-type'] || 'image/png' }))
+      setPreviewUrl(url)
+    } catch {
+      setError('Preview not available for this file type')
+      setShowPreview(false)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handleClosePreview = () => {
+    setShowPreview(false)
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+  }
+
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true)
+    try {
+      const res = await downloadEvidenceReport(id)
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `evidence-${evidence?.evidence_id || id}-report.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      setError('Failed to generate report')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
+  const isImageFile = evidence?.file_type?.startsWith('image/')
+
   if (loading) return <p className="text-gray-500">Loading...</p>
   if (error && !evidence) return <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md">{error}</div>
   if (!evidence) return <p className="text-gray-500">Evidence not found</p>
@@ -130,9 +179,19 @@ export default function EvidenceDetailPage() {
               {verifying ? 'Verifying...' : 'Verify Integrity'}
             </button>
           )}
+          {isImageFile && (
+            <button onClick={handlePreview}
+              className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm">
+              Preview
+            </button>
+          )}
           <button onClick={handleDownload}
             className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm">
             Download
+          </button>
+          <button onClick={handleDownloadReport} disabled={downloadingReport}
+            className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm disabled:opacity-50">
+            {downloadingReport ? 'Generating...' : 'PDF Report'}
           </button>
           {hasPermission(user?.role, 'transfer') && evidence.current_custodian_id === user?.user_id && (
             <button onClick={handleTransferOpen}
@@ -284,6 +343,35 @@ export default function EvidenceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={handleClosePreview}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="font-semibold text-gray-900">Watermarked Preview</h3>
+                <p className="text-xs text-gray-500 mt-0.5">This preview contains a forensic watermark</p>
+              </div>
+              <button onClick={handleClosePreview} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 flex items-center justify-center min-h-[300px]">
+              {previewLoading ? (
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-500">Generating watermarked preview...</p>
+                </div>
+              ) : previewUrl ? (
+                <img src={previewUrl} alt="Watermarked preview" className="max-w-full max-h-[70vh] object-contain" />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

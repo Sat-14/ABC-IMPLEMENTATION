@@ -14,3 +14,6 @@ export const updateCase = (caseId, data) =>
 
 export const getCaseEvidence = (caseId) =>
   client.get(`/cases/${caseId}/evidence`)
+
+export const getCaseTimeline = (caseId) =>
+  client.get(`/cases/${caseId}/timeline`)

@@ -134,3 +134,111 @@ def get_case_evidence(case_id):
                 e[field] = e[field].isoformat()
 
     return jsonify({"evidence": evidence_list})
+
+
+@cases_bp.route("/<case_id>/timeline", methods=["GET"])
+@jwt_required()
+def get_case_timeline(case_id):
+    """Get a chronological timeline of all events for a case."""
+    case = get_case(case_id)
+    if not case:
+        raise NotFoundError("Case not found")
+
+    from datetime import datetime
+
+    timeline = []
+
+    # Case creation event
+    timeline.append({
+        "type": "case",
+        "action": "case_created",
+        "title": f"Case {case['case_number']} created",
+        "description": case.get("title", ""),
+        "timestamp": case.get("created_at"),
+        "icon": "folder",
+    })
+
+    # Evidence events
+    evidence_list = list(mongo.db.evidence.find({"case_id": case_id}, {"_id": 0}))
+    for ev in evidence_list:
+        timestamp = ev.get("created_at")
+        if isinstance(timestamp, datetime):
+            timestamp = timestamp.isoformat()
+        timeline.append({
+            "type": "evidence",
+            "action": "evidence_uploaded",
+            "title": f"Evidence uploaded: {ev.get('file_name', 'Unknown')}",
+            "description": f"SHA-256: {(ev.get('original_hash', '') or '')[:16]}...",
+            "timestamp": timestamp,
+            "icon": "upload",
+            "entity_id": ev.get("evidence_id"),
+        })
+
+    # Transfer events
+    evidence_ids = [e["evidence_id"] for e in evidence_list]
+    if evidence_ids:
+        transfers = list(
+            mongo.db.custody_transfers.find(
+                {"evidence_id": {"$in": evidence_ids}}, {"_id": 0}
+            ).sort("requested_at", 1)
+        )
+        for t in transfers:
+            from_user = mongo.db.users.find_one({"user_id": t.get("from_user_id")})
+            to_user = mongo.db.users.find_one({"user_id": t.get("to_user_id")})
+            ev = mongo.db.evidence.find_one({"evidence_id": t.get("evidence_id")})
+            timestamp = t.get("requested_at")
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+
+            icon_map = {
+                "pending": "transfer",
+                "approved": "check",
+                "rejected": "x",
+                "completed": "check-double",
+                "cancelled": "x",
+            }
+            timeline.append({
+                "type": "transfer",
+                "action": f"transfer_{t.get('status', 'unknown')}",
+                "title": f"Transfer {t.get('status', 'unknown')}: {ev['file_name'] if ev else 'Unknown'}",
+                "description": f"{from_user['full_name'] if from_user else 'Unknown'} -> {to_user['full_name'] if to_user else 'Unknown'}: {t.get('reason', '')}",
+                "timestamp": timestamp,
+                "icon": icon_map.get(t.get("status"), "transfer"),
+                "entity_id": t.get("transfer_id"),
+            })
+
+    # Verification events from audit logs
+    if evidence_ids:
+        verifications = list(
+            mongo.db.audit_logs.find(
+                {
+                    "entity_id": {"$in": evidence_ids},
+                    "action": {"$in": ["evidence_verified", "evidence_verification_failed"]},
+                },
+                {"_id": 0},
+            ).sort("timestamp", 1)
+        )
+        for v in verifications:
+            timestamp = v.get("timestamp")
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            timeline.append({
+                "type": "verification",
+                "action": v.get("action"),
+                "title": v.get("details", "Verification"),
+                "description": f"By {v.get('user_email', 'Unknown')}",
+                "timestamp": timestamp,
+                "icon": "shield-check" if v.get("action") == "evidence_verified" else "shield-x",
+                "entity_id": v.get("entity_id"),
+            })
+
+    # Sort by timestamp
+    def sort_key(item):
+        ts = item.get("timestamp", "")
+        if isinstance(ts, datetime):
+            return ts.isoformat()
+        return ts or ""
+
+    timeline.sort(key=sort_key)
+
+    return jsonify({"timeline": timeline, "case": case})
