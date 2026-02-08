@@ -13,7 +13,8 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
 
     # Initialize extensions
-    mongo.init_app(app)
+    import certifi
+    mongo.init_app(app, tlsCAFile=certifi.where())
     jwt.init_app(app)
     register_jwt_debug_handlers(jwt)
     cors.init_app(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
