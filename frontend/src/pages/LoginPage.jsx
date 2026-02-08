@@ -26,7 +26,8 @@ export default function LoginPage() {
       await login(email, password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed')
+      console.error('Login error details:', err)
+      setError(err.response?.data?.msg || err.message || 'Login failed')
     } finally {
       setLoading(false)
     }
