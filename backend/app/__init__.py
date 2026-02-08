@@ -46,7 +46,15 @@ def create_app(config_name=None):
 
     # Create MongoDB indexes on first request
     with app.app_context():
-        _create_indexes(mongo.db)
+        try:
+            import sys, ssl
+            print(f"DEBUG: Python {sys.version}")
+            print(f"DEBUG: OpenSSL {ssl.OPENSSL_VERSION}")
+            _create_indexes(mongo.db)
+            print("DEBUG: MongoDB indexes created successfully")
+        except Exception as e:
+            print(f"WARNING: Failed to connect to MongoDB during startup: {e}")
+            print("App will continue starting, but database features may fail.")
 
     return app
 
