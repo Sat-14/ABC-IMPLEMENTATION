@@ -112,7 +112,7 @@ export default function EvidenceListPage() {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
         <div>
-          <h1 className="text-4xl font-black text-text-primary tracking-tight">Select a Case</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-text-primary tracking-tight">Select a Case</h1>
           <p className="text-text-secondary mt-2 text-lg">Choose a specific investigation to view its evidence library</p>
         </div>
 
@@ -158,9 +158,9 @@ export default function EvidenceListPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">
               Evidence Library
-              <span className="mx-3 text-text-tertiary font-light">/</span>
+              <span className="mx-2 md:mx-3 text-text-tertiary font-light">/</span>
               <span className="text-primary-600 font-extrabold">{selectedCase.case_number}</span>
             </h1>
             <p className="text-text-secondary mt-0.5 font-medium">{selectedCase.title}</p>

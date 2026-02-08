@@ -58,10 +58,10 @@ export default function DashboardPage() {
         </div>
         <div className="relative z-10 max-w-2xl">
           <Badge variant="primary" className="mb-4 bg-white/10 text-white border-white/20 backdrop-blur-md shadow-sm">Digital Chain of Custody</Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-white drop-shadow-sm">
+          <h1 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight text-white drop-shadow-sm">
             Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-cyan-200">{user?.full_name}</span>
           </h1>
-          <p className="text-blue-100/80 text-lg mb-8 max-w-lg leading-relaxed">
+          <p className="text-blue-100/80 text-base md:text-lg mb-8 max-w-lg leading-relaxed">
             You are logged in as <span className="text-white font-semibold">{ROLE_LABELS[user?.role]}</span>.
             Here is what's happening in your department today.
           </p>

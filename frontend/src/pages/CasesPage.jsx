@@ -79,7 +79,7 @@ export default function CasesPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary tracking-tight">Case Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight">Case Management</h1>
           <p className="text-text-secondary mt-1">Manage and track digital investigation cases</p>
         </div>
         <div className="flex items-center gap-3">

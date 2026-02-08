@@ -76,9 +76,17 @@ export default function Navbar({ onMenuClick, onSettingsClick, isMobile }) {
   }, [])
 
   return (
-    <header className="sticky top-0 z-40 h-20 px-8 flex items-center justify-between glass border-b border-border-subtle backdrop-blur-md transition-colors duration-300">
+    <header className="sticky top-0 z-40 h-20 px-4 md:px-8 flex items-center justify-between glass border-b border-border-subtle backdrop-blur-md transition-colors duration-300">
       {/* Search Area */}
-      <div className="flex items-center gap-4 flex-1 max-w-2xl">
+      <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-2xl">
+        {isMobile && (
+          <button
+            onClick={onMenuClick}
+            className="p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        )}
         <SearchDropdown />
       </div>
 
@@ -139,15 +147,14 @@ export default function Navbar({ onMenuClick, onSettingsClick, isMobile }) {
                         className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50 last:border-0 ${!n.is_read ? 'bg-primary-50/20' : ''}`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${
-                            n.type === 'integrity_failure' ? 'bg-red-50 text-red-500' :
-                            n.type === 'transfer_completed' ? 'bg-green-50 text-green-500' :
-                            n.type === 'transfer_rejected' ? 'bg-orange-50 text-orange-500' :
-                            'bg-blue-50 text-blue-500'
-                          }`}>
+                          <div className={`p-2 rounded-lg ${n.type === 'integrity_failure' ? 'bg-red-50 text-red-500' :
+                              n.type === 'transfer_completed' ? 'bg-green-50 text-green-500' :
+                                n.type === 'transfer_rejected' ? 'bg-orange-50 text-orange-500' :
+                                  'bg-blue-50 text-blue-500'
+                            }`}>
                             {n.type === 'integrity_failure' ? <AlertTriangle className="w-3.5 h-3.5" /> :
-                             n.type?.startsWith('transfer') ? <ArrowLeftRight className="w-3.5 h-3.5" /> :
-                             <Bell className="w-3.5 h-3.5" />}
+                              n.type?.startsWith('transfer') ? <ArrowLeftRight className="w-3.5 h-3.5" /> :
+                                <Bell className="w-3.5 h-3.5" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">

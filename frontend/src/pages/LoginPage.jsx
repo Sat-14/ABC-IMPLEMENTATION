@@ -73,9 +73,9 @@ export default function LoginPage() {
   ]
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Section - Feature Showcase (60%) */}
-      <div className="lg:w-[60%] relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6 lg:p-8 flex flex-col justify-center overflow-hidden">
+      <div className="lg:w-[60%] w-full relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6 lg:p-12 flex flex-col justify-center overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20">
           <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse" />
@@ -99,7 +99,7 @@ export default function LoginPage() {
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             {features.map((feature, index) => (
               <div
                 key={index}
@@ -128,7 +128,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Section - Login Form (40%) */}
-      <div className="lg:w-[40%] bg-bg-secondary flex items-center justify-center p-6 lg:p-8 relative">
+      <div className="lg:w-[40%] w-full bg-bg-secondary flex items-center justify-center p-6 lg:p-8 relative">
         {/* Subtle Background Gradients */}
         <div className="absolute top-[-20%] right-[-20%] w-96 h-96 bg-blue-100/30 rounded-full blur-3xl opacity-60" />
         <div className="absolute bottom-[-20%] left-[-20%] w-96 h-96 bg-cyan-100/30 rounded-full blur-3xl opacity-60" />

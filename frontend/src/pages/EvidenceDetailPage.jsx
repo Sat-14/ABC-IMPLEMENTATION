@@ -163,16 +163,16 @@ export default function EvidenceDetailPage() {
   return (
     <div>
       <Link to="/evidence" className="text-sm text-blue-600 hover:underline">&larr; Back to Evidence</Link>
-      <div className="flex items-center justify-between mt-2 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mt-2 mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{evidence.file_name}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">{evidence.file_name}</h1>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm text-gray-500">ID: {evidence.evidence_id}</span>
             <IntegrityBadge status={evidence.integrity_status} />
             <StatusBadge status={evidence.status} />
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasPermission(user?.role, 'verify') && (
             <button onClick={handleVerify} disabled={verifying}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm">

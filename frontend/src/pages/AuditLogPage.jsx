@@ -52,7 +52,7 @@ export default function AuditLogPage() {
       {/* HEADER SECTION */}
       <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[32px] font-bold text-[#0F172A] leading-tight tracking-tight">Audit Log</h1>
+          <h1 className="text-2xl md:text-[32px] font-bold text-[#0F172A] leading-tight tracking-tight">Audit Log</h1>
           <p className="text-[16px] text-[#64748B] mt-1">Immutable record of system and evidence interactions</p>
         </div>
         {hasPermission(user?.role, 'admin') && (
@@ -74,8 +74,8 @@ export default function AuditLogPage() {
       <div className="max-w-7xl mx-auto w-full space-y-6">
         {chainStatus && (
           <div className={`p-4 rounded-xl border-l-4 animate-in slide-in-from-top duration-300 ${chainStatus.intact
-              ? 'bg-[#F0FDF4] border-[#22C55E] text-[#166534]'
-              : 'bg-[#FEF2F2] border-[#EF4444] text-[#991B1B]'
+            ? 'bg-[#F0FDF4] border-[#22C55E] text-[#166534]'
+            : 'bg-[#FEF2F2] border-[#EF4444] text-[#991B1B]'
             }`}>
             <div className="flex items-center gap-3">
               {chainStatus.intact ? (
