@@ -31,6 +31,33 @@ This system provides a tamper-proof, cryptographically verifiable trail for digi
 
 ---
 
+## 🌟 Advanced Capabilities
+
+### 📊 Automated Compliance Reporting
+*   **Legal-Grade PDF Generation**: Uses `ReportLab` to auto-generate:
+    *   **Chain of Custody Reports**: Detailed history for individual evidence items, including every transfer, hash check, and user interaction.
+    *   **Case Summaries**: Aggregate reports for entire investigations.
+*   **Watermarking**: Evidence previews are overlaid with viewer identity/timestamp to deter leaking.
+
+### 🔔 Real-Time Action Center
+*   **In-App Notifications**: Immediate alerts for:
+    *   **Custody Transfer Requests**: Requires recipient approval.
+    *   **Integrity Failures**: Critical alerts if hash mismatches are detected.
+    *   **Workflow Updates**: Alerts when transfers are completed or rejected.
+*   **Smart Indicators**: Visual badges for "Expiring Soon" evidence based on retention policies.
+
+### 🔍 Intelligent Search & Discovery
+*   **Global Search**: Unified search bar querying **Cases**, **Evidence**, and **Users** simultaneously.
+*   **Deep Filtering**: Find evidence by specific hash, uploader, description, or metadata tags.
+
+### 📅 Lifecycle Automation
+*   **Auto-Numbering**: Cases are automatically assigned sequential IDs (e.g., `CASE-2026-00042`).
+*   **Retention Policies**:
+    *   **Auto-Archival**: Closing a case automatically archives all linked evidence to preserve state.
+    *   **Disposal Workflow**: Dedicated interface to flag and securely dispose of expired evidence in compliance with data retention laws.
+
+---
+
 ## 🧠 Algorithms & Technical Details
 
 This project implements several advanced algorithms to ensure security and transparency.
