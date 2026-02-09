@@ -5,6 +5,7 @@ from app.audit import audit_bp
 from app.audit.services import get_audit_logs, verify_chain_integrity
 from app.auth.decorators import permission_required
 from app.common.constants import Permissions
+from app.common.errors import NotFoundError
 
 
 @audit_bp.route("/", methods=["GET"])
@@ -45,4 +46,17 @@ def evidence_audit_logs(evidence_id):
 @permission_required(Permissions.ADMIN)
 def verify_chain():
     result = verify_chain_integrity()
+    return jsonify(result)
+
+
+@audit_bp.route("/summary/evidence/<evidence_id>", methods=["GET"])
+@jwt_required()
+def evidence_summary(evidence_id):
+    """Generate an AI-powered natural language summary for an evidence item."""
+    from app.audit.summary import generate_evidence_summary
+
+    result = generate_evidence_summary(evidence_id)
+    if not result:
+        raise NotFoundError("Evidence not found")
+
     return jsonify(result)

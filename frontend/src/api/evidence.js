@@ -28,3 +28,6 @@ export const downloadEvidence = (evidenceId) =>
 
 export const previewEvidence = (evidenceId) =>
   client.get(`/evidence/${evidenceId}/preview`, { responseType: 'blob' })
+
+export const getEvidenceTrustScore = (evidenceId) =>
+  client.get(`/evidence/${evidenceId}/trust-score`)

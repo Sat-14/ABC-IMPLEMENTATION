@@ -8,3 +8,6 @@ export const getEvidenceAuditLogs = (evidenceId) =>
 
 export const verifyAuditChain = () =>
   client.get('/audit/verify-chain')
+
+export const getEvidenceAuditSummary = (evidenceId) =>
+  client.get(`/audit/summary/evidence/${evidenceId}`)

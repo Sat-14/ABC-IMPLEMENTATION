@@ -10,7 +10,10 @@
       "Bash(python -m venv:*)",
       "Bash(venvScriptspip:*)",
       "Bash(\"venv/Scripts/pip\" install -r requirements.txt)",
-      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''App factory imports OK''\\)\")"
+      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''App factory imports OK''\\)\")",
+      "Bash(\"venv/Scripts/python\" -c \"from app import create_app; print\\(''All imports OK''\\)\")",
+      "Bash(venv/Scripts/python:*)",
+      "Bash(timeout:*)"
     ]
   }
 }

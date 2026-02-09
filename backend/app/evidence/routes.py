@@ -318,3 +318,16 @@ def preview_evidence(evidence_id):
         return send_file(ev["file_path"], mimetype=mime)
 
     return jsonify({"error": "Preview not available for this file type", "mime_type": mime}), 415
+
+
+@evidence_bp.route("/<evidence_id>/trust-score", methods=["GET"])
+@jwt_required()
+def get_trust_score(evidence_id):
+    """Compute and return an explainable trust score for the evidence."""
+    from app.evidence.trust_score import compute_trust_score
+
+    result = compute_trust_score(evidence_id)
+    if not result:
+        raise NotFoundError("Evidence not found")
+
+    return jsonify(result)

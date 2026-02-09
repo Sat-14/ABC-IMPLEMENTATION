@@ -10,6 +10,8 @@ import { hasPermission } from '../utils/roles'
 import { formatDate, formatFileSize, formatCategoryLabel } from '../utils/formatters'
 import IntegrityBadge from '../components/common/IntegrityBadge'
 import StatusBadge from '../components/common/StatusBadge'
+import TrustScoreCard from '../components/evidence/TrustScoreCard'
+import AuditSummaryCard from '../components/evidence/AuditSummaryCard'
 
 export default function EvidenceDetailPage() {
   const { id } = useParams()
@@ -240,6 +242,7 @@ export default function EvidenceDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Metadata */}
         <div className="lg:col-span-1 space-y-6">
+          <TrustScoreCard evidenceId={id} />
           <div className="bg-white rounded-lg border p-6">
             <h2 className="font-semibold text-gray-900 mb-4">Metadata</h2>
             <dl className="space-y-3">
@@ -297,6 +300,7 @@ export default function EvidenceDetailPage() {
 
         {/* Hash History + Audit Log */}
         <div className="lg:col-span-2 space-y-6">
+          <AuditSummaryCard evidenceId={id} />
           {/* Hash History */}
           <div className="bg-white rounded-lg border">
             <div className="px-6 py-4 border-b">
