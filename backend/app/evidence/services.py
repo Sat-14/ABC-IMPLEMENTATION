@@ -17,6 +17,16 @@ def compute_sha256(file_path):
     return sha256.hexdigest()
 
 
+def resolve_file_path(path):
+    """Resolve a stored path to an absolute path. Handles both absolute and relative paths."""
+    if not path:
+        return None
+    if os.path.isabs(path):
+        return path
+    from flask import current_app
+    return os.path.join(current_app.config["UPLOAD_FOLDER"], path)
+
+
 def store_evidence_file(file_obj, upload_folder):
     """Save uploaded file with UUID name. Returns (stored_path, original_name, file_size)."""
     original_name = secure_filename(file_obj.filename) or "unnamed"
@@ -45,6 +55,7 @@ def create_evidence(file_path, original_name, file_size, file_type, case_id,
     evidence = {
         "evidence_id": evidence_id,
         "case_id": case_id,
+        "case_ids": [case_id],
         "file_name": original_name,
         "file_path": file_path,
         "file_size": file_size,
@@ -79,7 +90,7 @@ def get_evidence_list(page=1, per_page=10, case_id=None, category=None,
                       status=None, search=None, custodian_id=None):
     query = {}
     if case_id:
-        query["case_id"] = case_id
+        query["$or"] = [{"case_id": case_id}, {"case_ids": case_id}]
     if category:
         query["category"] = category
     if status:
@@ -87,10 +98,14 @@ def get_evidence_list(page=1, per_page=10, case_id=None, category=None,
     if custodian_id:
         query["current_custodian_id"] = custodian_id
     if search:
-        query["$or"] = [
+        search_filter = [
             {"file_name": {"$regex": search, "$options": "i"}},
             {"description": {"$regex": search, "$options": "i"}},
         ]
+        if "$or" in query:
+            query = {"$and": [query, {"$or": search_filter}]}
+        else:
+            query["$or"] = search_filter
 
     total = mongo.db.evidence.count_documents(query)
     evidence = list(
@@ -176,6 +191,30 @@ def get_hash_history(evidence_id):
     return records
 
 
+def link_evidence_to_case(evidence_id, case_id):
+    """Link evidence to an additional case."""
+    mongo.db.evidence.update_one(
+        {"evidence_id": evidence_id},
+        {
+            "$addToSet": {"case_ids": case_id},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    return get_evidence(evidence_id)
+
+
+def unlink_evidence_from_case(evidence_id, case_id):
+    """Remove a link between evidence and a case."""
+    mongo.db.evidence.update_one(
+        {"evidence_id": evidence_id},
+        {
+            "$pull": {"case_ids": case_id},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    return get_evidence(evidence_id)
+
+
 def record_hash(evidence_id, hash_value, event_type, computed_by, matches_original=True):
     record = {
         "record_id": str(uuid.uuid4()),
@@ -192,16 +231,22 @@ def record_hash(evidence_id, hash_value, event_type, computed_by, matches_origin
 
 
 def _enrich_evidence(ev):
-    """Add custodian and uploader names."""
+    """Add custodian and uploader names, and multi-case info."""
     if ev.get("current_custodian_id"):
         custodian = mongo.db.users.find_one({"user_id": ev["current_custodian_id"]})
         ev["custodian_name"] = custodian["full_name"] if custodian else "Unknown"
     if ev.get("uploaded_by"):
         uploader = mongo.db.users.find_one({"user_id": ev["uploaded_by"]})
         ev["uploaded_by_name"] = uploader["full_name"] if uploader else "Unknown"
-    if ev.get("case_id"):
-        case = mongo.db.cases.find_one({"case_id": ev["case_id"]})
-        ev["case_number"] = case["case_number"] if case else None
+
+    # Enrich with multiple case numbers
+    case_ids = ev.get("case_ids") or ([ev.get("case_id")] if ev.get("case_id") else [])
+    if case_ids:
+        cases = list(mongo.db.cases.find({"case_id": {"$in": case_ids}}))
+        ev["case_numbers"] = [c["case_number"] for c in cases]
+        ev["linked_cases"] = [{"case_id": c["case_id"], "case_number": c["case_number"], "title": c["title"]} for c in cases]
+        if cases:
+            ev["case_number"] = cases[0]["case_number"]
     return ev
 
 

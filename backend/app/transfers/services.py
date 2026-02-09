@@ -171,7 +171,7 @@ def cancel_transfer(transfer_id, user_id):
     return _serialize(_enrich_transfer(transfer))
 
 
-def get_transfers(page=1, per_page=10, from_user=None, to_user=None, status=None, evidence_id=None):
+def get_transfers(page=1, per_page=10, from_user=None, to_user=None, status=None, evidence_id=None, involving_user=None):
     query = {}
     if from_user:
         query["from_user_id"] = from_user
@@ -181,6 +181,14 @@ def get_transfers(page=1, per_page=10, from_user=None, to_user=None, status=None
         query["status"] = status
     if evidence_id:
         query["evidence_id"] = evidence_id
+
+    # Data isolation: filter to only transfers involving this user
+    if involving_user:
+        user_filter = {"$or": [{"from_user_id": involving_user}, {"to_user_id": involving_user}]}
+        if query:
+            query = {"$and": [query, user_filter]}
+        else:
+            query = user_filter
 
     total = mongo.db.custody_transfers.count_documents(query)
     transfers = list(

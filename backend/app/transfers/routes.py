@@ -55,15 +55,25 @@ def request_transfer():
 @transfers_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_transfers():
+    current_user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(current_user_id)
+
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
     from_user = request.args.get("from_user")
     to_user = request.args.get("to_user")
     status = request.args.get("status")
 
+    # Data isolation: non-admins only see transfers they are involved in
+    involving_user = None
+    if user and user.get("role") != "admin":
+        involving_user = current_user_id
+
     result = get_transfers(
         page=page, per_page=per_page,
         from_user=from_user, to_user=to_user, status=status,
+        involving_user=involving_user,
     )
     return jsonify(result)
 

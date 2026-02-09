@@ -95,47 +95,50 @@ export default function AuditSummaryCard({ evidenceId }) {
   const stats = data.statistics || {}
 
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-gray-100/50 rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b bg-gradient-to-r from-primary-50/50 to-transparent">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-primary-600" />
-            <h2 className="font-semibold text-gray-900">AI-Generated Audit Summary</h2>
-            <Badge variant="primary">XAI</Badge>
-          </div>
-          <span className="text-[10px] text-text-tertiary">
-            Generated {formatDate(data.generated_at)}
-          </span>
+      <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Brain className="w-5 h-5 text-blue-600" />
+          <h2 className="font-semibold text-gray-900">AI-Generated Intelligence</h2>
+          <Badge variant="primary" className="bg-blue-50 text-blue-600 border-blue-100/50">XAI</Badge>
         </div>
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+          <Clock size={10} />
+          Gen: {formatDate(data.generated_at)}
+        </span>
       </div>
 
       <div className="p-6 space-y-5">
         {/* Main Summary */}
-        <div className="bg-bg-secondary/30 rounded-xl p-4 border border-border-subtle">
+        <div className="bg-gray-100/40 rounded-xl p-4 border border-border-subtle">
           <HighlightedText text={data.summary_text} />
         </div>
 
         {/* Narratives (collapsible) */}
-        <div>
-          <button onClick={() => toggle('narratives')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-text-primary mb-3">
-            {sections.narratives ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            Detailed Analysis
-          </button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <button onClick={() => toggle('narratives')}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-blue-600 transition-colors">
+              {sections.narratives ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Detailed Analysis
+            </button>
+            <div className="h-px flex-1 mx-3 bg-gray-50"></div>
+          </div>
+
           {sections.narratives && (
-            <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-green-600" />
-                  <span className="text-xs font-semibold text-text-primary">Integrity Analysis</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
+              <div className="p-4 rounded-xl bg-green-100/20 border border-green-200/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-bold text-green-700 uppercase tracking-tight">Integrity Assessment</span>
                 </div>
                 <HighlightedText text={data.integrity_narrative} />
               </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="text-xs font-semibold text-text-primary">Custody Analysis</span>
+              <div className="p-4 rounded-xl bg-blue-100/20 border border-blue-200/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowLeftRight className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-700 uppercase tracking-tight">Custody Assessment</span>
                 </div>
                 <HighlightedText text={data.custody_narrative} />
               </div>
@@ -188,11 +191,10 @@ export default function AuditSummaryCard({ evidenceId }) {
                   return (
                     <div key={idx} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          event.significance === 'high' ? 'bg-red-50 text-red-500' :
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${event.significance === 'high' ? 'bg-red-50 text-red-500' :
                           event.significance === 'medium' ? 'bg-blue-50 text-blue-500' :
-                          'bg-gray-50 text-gray-400'
-                        }`}>
+                            'bg-gray-50 text-gray-400'
+                          }`}>
                           <Icon className="w-3.5 h-3.5" />
                         </div>
                         {!isLast && <div className="w-0.5 flex-1 my-1 bg-border-subtle"></div>}
@@ -216,26 +218,30 @@ export default function AuditSummaryCard({ evidenceId }) {
         )}
 
         {/* Statistics Grid */}
-        <div>
-          <button onClick={() => toggle('stats')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-text-primary mb-3">
-            {sections.stats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            Statistics
-          </button>
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between">
+            <button onClick={() => toggle('stats')}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-blue-600 transition-colors">
+              {sections.stats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Evidence Statistics
+            </button>
+            <div className="h-px flex-1 mx-3 bg-gray-50"></div>
+          </div>
+
           {sections.stats && (
-            <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-200">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 animate-in fade-in duration-300">
               {[
-                { icon: Activity, label: 'Total Actions', value: stats.total_actions || 0 },
-                { icon: Shield, label: 'Verifications', value: stats.total_verifications || 0 },
-                { icon: ArrowLeftRight, label: 'Transfers', value: stats.total_transfers || 0 },
-                { icon: Users, label: 'Unique Users', value: stats.unique_users || 0 },
-                { icon: Clock, label: 'Time Span', value: `${stats.time_span_days || 0}d` },
-                { icon: CheckCircle, label: 'First Action', value: stats.first_action ? formatDate(stats.first_action).split(',')[0] : 'N/A' },
-              ].map(({ icon: Icon, label, value }) => (
-                <div key={label} className="bg-bg-secondary/50 rounded-lg p-3 text-center">
-                  <Icon className="w-4 h-4 text-text-tertiary mx-auto mb-1" />
-                  <p className="text-lg font-bold text-text-primary">{value}</p>
-                  <p className="text-[10px] text-text-tertiary">{label}</p>
+                { icon: Activity, label: 'Actions', value: stats.total_actions || 0, color: 'text-gray-600' },
+                { icon: Shield, label: 'Checks', value: stats.total_verifications || 0, color: 'text-green-600' },
+                { icon: ArrowLeftRight, label: 'Transfers', value: stats.total_transfers || 0, color: 'text-blue-600' },
+                { icon: Users, label: 'Users', value: stats.unique_users || 0, color: 'text-purple-600' },
+                { icon: Clock, label: 'Days Active', value: stats.time_span_days || 0, color: 'text-orange-600' },
+                { icon: CheckCircle, label: 'Initial Upload', value: stats.first_action ? formatDate(stats.first_action).split(',')[0] : 'N/A', color: 'text-emerald-600' },
+              ].map(({ icon: Icon, label, value, color }) => (
+                <div key={label} className="bg-gray-100/50 rounded-xl p-3 border border-gray-100/50 text-center hover:bg-gray-100/80 transition-all group">
+                  <Icon className={`w-3.5 h-3.5 mx-auto mb-1.5 ${color}`} />
+                  <p className="text-sm font-black text-gray-900 leading-none mb-1">{value}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</p>
                 </div>
               ))}
             </div>

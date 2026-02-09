@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getEvidence, verifyEvidence, getEvidenceHistory, downloadEvidence, previewEvidence } from '../api/evidence'
+import { getEvidence, verifyEvidence, getEvidenceHistory, downloadEvidence, previewEvidence, transcribeEvidence, linkEvidenceToCase, unlinkEvidenceFromCase } from '../api/evidence'
 import { downloadEvidenceReport } from '../api/reports'
+import { getCases } from '../api/cases'
 import { getEvidenceAuditLogs } from '../api/audit'
 import { requestTransfer } from '../api/transfers'
 import { getUsers } from '../api/auth'
@@ -12,6 +13,68 @@ import IntegrityBadge from '../components/common/IntegrityBadge'
 import StatusBadge from '../components/common/StatusBadge'
 import TrustScoreCard from '../components/evidence/TrustScoreCard'
 import AuditSummaryCard from '../components/evidence/AuditSummaryCard'
+import TransferModal from '../components/evidence/TransferModal'
+import ShareModal from '../components/evidence/ShareModal'
+import {
+  Shield,
+  History,
+  Copy,
+  Check,
+  Fingerprint,
+  Info,
+  ShieldCheck,
+  ShieldAlert,
+  FileText,
+  Clock,
+  User,
+  Hash,
+  AlertTriangle,
+  ArrowRightLeft,
+  Activity,
+  Eye,
+  Download,
+  Mic,
+  FileAudio,
+  Share2,
+  MapPin,
+  Link as LinkIcon,
+  Unlink,
+  Plus,
+  Loader2
+} from 'lucide-react'
+
+const HashDisplay = ({ label, hash, className = "" }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(hash)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const truncatedHash = hash ? `${hash.substring(0, 10)}...${hash.substring(hash.length - 10)}` : 'N/A'
+
+  return (
+    <div className={`p-3 bg-gray-100/50 rounded-lg border border-gray-100 group transition-all hover:bg-gray-100/80 ${className}`}>
+      <div className="flex items-center justify-between mb-1">
+        <dt className="text-[10px] uppercase font-bold tracking-wider text-gray-400 flex items-center gap-1.5">
+          <Hash size={10} />
+          {label}
+        </dt>
+        <button
+          onClick={handleCopy}
+          className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+          title="Copy full hash"
+        >
+          {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+        </button>
+      </div>
+      <dd className="text-xs font-mono text-gray-700 break-all select-all flex items-center justify-between">
+        <span className="truncate" title={hash}>{truncatedHash}</span>
+      </dd>
+    </div>
+  )
+}
 
 export default function EvidenceDetailPage() {
   const { id } = useParams()
@@ -21,14 +84,20 @@ export default function EvidenceDetailPage() {
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const [error, setError] = useState('')
   const [showTransfer, setShowTransfer] = useState(false)
-  const [transferForm, setTransferForm] = useState({ to_user_id: '', reason: '' })
   const [users, setUsers] = useState([])
+  const [showShare, setShowShare] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [trustScore, setTrustScore] = useState(null)
+  const [allCases, setAllCases] = useState([])
+  const [selectedCaseToLink, setSelectedCaseToLink] = useState('')
+  const [isLinking, setIsLinking] = useState(false)
   const [downloadingReport, setDownloadingReport] = useState(false)
+
 
   useEffect(() => {
     async function load() {
@@ -48,6 +117,7 @@ export default function EvidenceDetailPage() {
       }
     }
     load()
+    getCases({ per_page: 100 }).then(res => setAllCases(res.data.cases || [])).catch(() => { })
   }, [id])
 
   const handleVerify = async () => {
@@ -70,6 +140,54 @@ export default function EvidenceDetailPage() {
     }
   }
 
+  const handleTranscribe = async () => {
+    setTranscribing(true)
+    try {
+      await transcribeEvidence(id)
+      // Optimistically update status (or reload evidence)
+      setEvidence(prev => ({
+        ...prev,
+        transcription_status: 'processing'
+      }))
+      // Reload after a short delay to see if it started
+      setTimeout(async () => {
+        const evRes = await getEvidence(id)
+        setEvidence(evRes.data.evidence)
+      }, 1000)
+    } catch (err) {
+      setError('Transcription failed to start: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
+  const handleLinkCase = async () => {
+    if (!selectedCaseToLink) return
+    setIsLinking(true)
+    try {
+      const res = await linkEvidenceToCase(id, selectedCaseToLink)
+      setEvidence(res.data.evidence)
+      setSelectedCaseToLink('')
+    } catch (err) {
+      setError('Failed to link case: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setIsLinking(false)
+    }
+  }
+
+  const handleUnlinkCase = async (caseId) => {
+    if (!window.confirm('Are you sure you want to unlink this case?')) return
+    setIsLinking(true)
+    try {
+      const res = await unlinkEvidenceFromCase(id, caseId)
+      setEvidence(res.data.evidence)
+    } catch (err) {
+      setError('Failed to unlink case: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setIsLinking(false)
+    }
+  }
+
   const handleDownload = async () => {
     try {
       const res = await downloadEvidence(id)
@@ -86,6 +204,25 @@ export default function EvidenceDetailPage() {
     }
   }
 
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true)
+    try {
+      const res = await downloadEvidenceReport(id)
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `evidence-${evidence?.evidence_id || id}-report.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      setError('Failed to generate report')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
   const handleTransferOpen = async () => {
     try {
       const res = await getUsers()
@@ -96,16 +233,14 @@ export default function EvidenceDetailPage() {
     }
   }
 
-  const handleTransferSubmit = async (e) => {
-    e.preventDefault()
+  const handleTransferSubmit = async (formData) => {
     try {
       await requestTransfer({
         evidence_id: id,
-        to_user_id: transferForm.to_user_id,
-        reason: transferForm.reason,
+        to_user_id: formData.to_user_id,
+        reason: formData.reason,
       })
       setShowTransfer(false)
-      setTransferForm({ to_user_id: '', reason: '' })
       // Refresh evidence to show updated custodian info
       const evRes = await getEvidence(id)
       setEvidence(evRes.data.evidence)
@@ -137,26 +272,28 @@ export default function EvidenceDetailPage() {
     }
   }
 
-  const handleDownloadReport = async () => {
-    setDownloadingReport(true)
-    try {
-      const res = await downloadEvidenceReport(id)
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `evidence-${evidence?.evidence_id || id}-report.pdf`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch {
-      setError('Failed to generate report')
-    } finally {
-      setDownloadingReport(false)
-    }
-  }
 
-  const isImageFile = evidence?.file_type?.startsWith('image/')
+
+  const isPreviewable =
+    evidence?.file_type?.startsWith('image/') ||
+    evidence?.file_type?.startsWith('audio/') ||
+    evidence?.file_type?.startsWith('video/') ||
+    ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'text/html'].includes(evidence?.file_type) ||
+    evidence?.file_name?.endsWith('.md') ||
+    evidence?.file_name?.endsWith('.txt') ||
+    evidence?.file_name?.toLowerCase().endsWith('.mp3') ||
+    evidence?.file_name?.toLowerCase().endsWith('.mp4') ||
+    evidence?.file_name?.toLowerCase().endsWith('.wav') ||
+    evidence?.file_name?.toLowerCase().endsWith('.m4a')
+
+  // Check if audio/video for transcription
+  const isTranscribable =
+    evidence?.file_type?.startsWith('audio/') ||
+    evidence?.file_type?.startsWith('video/') ||
+    evidence?.file_name?.toLowerCase().endsWith('.mp3') ||
+    evidence?.file_name?.toLowerCase().endsWith('.mp4') ||
+    evidence?.file_name?.toLowerCase().endsWith('.wav') ||
+    evidence?.file_name?.toLowerCase().endsWith('.m4a')
 
   if (loading) return <p className="text-gray-500">Loading...</p>
   if (error && !evidence) return <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md">{error}</div>
@@ -168,37 +305,53 @@ export default function EvidenceDetailPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mt-2 mb-6 gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">{evidence.file_name}</h1>
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-1.5 mt-1">
             <span className="text-sm text-gray-500">ID: {evidence.evidence_id}</span>
-            <IntegrityBadge status={evidence.integrity_status} />
-            <StatusBadge status={evidence.status} />
+            <div className="flex items-center gap-1.5 ml-1">
+              <IntegrityBadge status={evidence.integrity_status} />
+              <StatusBadge status={evidence.status} />
+            </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap items-center gap-1.5 flex-wrap">
           {hasPermission(user?.role, 'verify') && (
             <button onClick={handleVerify} disabled={verifying}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm">
-              {verifying ? 'Verifying...' : 'Verify Integrity'}
+              className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200/50 hover:bg-emerald-700 hover:shadow-emerald-300/50 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 text-[11px] font-bold">
+              <ShieldCheck size={14} className={verifying ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'} />
+              <span className="truncate">{verifying ? 'Verifying...' : 'Verify'}</span>
             </button>
           )}
-          {isImageFile && (
+
+          {isPreviewable && (
             <button onClick={handlePreview}
-              className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm">
-              Preview
+              className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-gray-100 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all text-[11px] font-bold">
+              <Eye size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+              <span>Preview</span>
             </button>
           )}
           <button onClick={handleDownload}
-            className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm">
-            Download
+            className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-gray-100 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all text-[11px] font-bold">
+            <Download size={14} className="text-indigo-500 group-hover:scale-110 transition-transform" />
+            <span>Download</span>
           </button>
+
           <button onClick={handleDownloadReport} disabled={downloadingReport}
-            className="px-4 py-2 bg-white border text-gray-700 rounded-md hover:bg-gray-50 text-sm disabled:opacity-50">
-            {downloadingReport ? 'Generating...' : 'PDF Report'}
+            className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-gray-100 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all text-[11px] font-bold disabled:opacity-50">
+            <FileText size={14} className="text-orange-500 group-hover:scale-110 transition-transform" />
+            <span className="truncate">{downloadingReport ? 'Generating...' : 'Report'}</span>
           </button>
+
+          <button onClick={() => setShowShare(true)}
+            className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-gray-100 text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-200 hover:-translate-y-0.5 active:translate-y-0 transition-all text-[11px] font-bold">
+            <Share2 size={14} className="text-purple-500 group-hover:scale-110 transition-transform" />
+            <span className="truncate">Share</span>
+          </button>
+
           {hasPermission(user?.role, 'transfer') && evidence.current_custodian_id === user?.user_id && (
             <button onClick={handleTransferOpen}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-              Transfer Custody
+              className="group flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200/50 hover:bg-blue-700 hover:shadow-blue-300/50 hover:-translate-y-0.5 active:translate-y-0 transition-all text-[11px] font-bold">
+              <ArrowRightLeft size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+              <span className="truncate">Transfer</span>
             </button>
           )}
         </div>
@@ -206,148 +359,347 @@ export default function EvidenceDetailPage() {
 
       {error && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-md text-sm mb-4">{error}</div>}
 
-      {/* Transfer Form Modal */}
-      {showTransfer && (
-        <div className="bg-white rounded-lg border p-6 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Request Custody Transfer</h3>
-          <form onSubmit={handleTransferSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Transfer To</label>
-              <select value={transferForm.to_user_id}
-                onChange={(e) => setTransferForm({ ...transferForm, to_user_id: e.target.value })}
-                required className="w-full px-3 py-2 border rounded-md text-sm">
-                <option value="">Select user...</option>
-                {users.map(u => (
-                  <option key={u.user_id} value={u.user_id}>{u.full_name} ({u.role})</option>
-                ))}
-              </select>
+      {/* Low Trust Score Warning */}
+      {trustScore !== null && trustScore < 60 && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm animate-pulse">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-red-100 text-red-600 rounded-full shrink-0">
+              <ShieldAlert size={24} />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-              <textarea value={transferForm.reason}
-                onChange={(e) => setTransferForm({ ...transferForm, reason: e.target.value })}
-                required rows={2} className="w-full px-3 py-2 border rounded-md text-sm" />
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-800">Critical Trust Alert</h3>
+              <p className="text-sm text-red-700 mt-1 leading-relaxed">
+                This evidence has a Trust Score of <b>{Math.round(trustScore)}/100</b>, which is below the safe threshold of 60.
+                Immediate verification of the chain of custody and file integrity is recommended to ensure document safety.
+              </p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={handleVerify}
+                  className="text-xs font-bold uppercase tracking-wider text-red-700 underline hover:text-red-900"
+                >
+                  Verify Now
+                </button>
+                <Link
+                  to={`/audit?evidence_id=${id}`}
+                  className="text-xs font-bold uppercase tracking-wider text-red-700 underline hover:text-red-900"
+                >
+                  Review Audit Logs
+                </Link>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                Submit Request
-              </button>
-              <button type="button" onClick={() => setShowTransfer(false)}
-                className="px-4 py-2 border rounded-md hover:bg-gray-50 text-sm">Cancel</button>
-            </div>
-          </form>
+          </div>
         </div>
       )}
+
+      <TransferModal
+        isOpen={showTransfer}
+        onClose={() => setShowTransfer(false)}
+        onSubmit={handleTransferSubmit}
+        users={users}
+        loading={loading}
+      />
+
+      <ShareModal
+        isOpen={showShare}
+        onClose={() => setShowShare(false)}
+        evidenceId={id}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Metadata */}
         <div className="lg:col-span-1 space-y-6">
-          <TrustScoreCard evidenceId={id} />
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Metadata</h2>
-            <dl className="space-y-3">
-              {[
-                ['Category', formatCategoryLabel(evidence.category)],
-                ['Classification', evidence.classification],
-                ['File Size', formatFileSize(evidence.file_size)],
-                ['File Type', evidence.file_type],
-                ['Uploaded By', evidence.uploaded_by_name || evidence.uploaded_by],
-                ['Current Custodian', evidence.custodian_name || evidence.current_custodian_id],
-                ['Case', evidence.case_number || evidence.case_id],
-                ['Uploaded', formatDate(evidence.created_at)],
-                ['Description', evidence.description || 'N/A'],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs text-gray-500">{label}</dt>
-                  <dd className="text-sm text-gray-900 mt-0.5">{value}</dd>
+          <TrustScoreCard evidenceId={id} onScoreLoaded={setTrustScore} />
+          {/* Metadata */}
+          <div className="bg-gray-100/50 rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-50 bg-gray-50/30 flex items-center gap-2">
+              <Info size={18} className="text-blue-600" />
+              <h2 className="font-semibold text-gray-900">Evidence Metadata</h2>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { label: 'Category', value: formatCategoryLabel(evidence.category), icon: <Shield size={14} /> },
+                  { label: 'Classification', value: evidence.classification, icon: <Fingerprint size={14} />, highlight: true },
+                  { label: 'File Size', value: formatFileSize(evidence.file_size), icon: <FileText size={14} /> },
+                  { label: 'File Type', value: evidence.file_type, icon: <Activity size={14} /> },
+                  { label: 'Uploaded By', value: evidence.uploaded_by_name || evidence.uploaded_by, icon: <User size={14} /> },
+                  { label: 'Current Custodian', value: evidence.custodian_name || evidence.current_custodian_id, icon: <User size={14} /> },
+                  {
+                    label: 'Case References',
+                    value: evidence.case_numbers?.join(', ') || evidence.case_number || evidence.case_id,
+                    icon: <FileText size={14} />,
+                    highlight: true
+                  },
+                  { label: 'Upload Date', value: formatDate(evidence.created_at), icon: <Clock size={14} /> },
+                  {
+                    label: 'GPS Location',
+                    value: evidence.location ? `${evidence.location.lat.toFixed(4)}, ${evidence.location.lng.toFixed(4)}` : 'Not Captured',
+                    icon: <MapPin size={14} />,
+                    isLink: !!evidence.location,
+                    linkUrl: evidence.location ? `https://www.google.com/maps?q=${evidence.location.lat},${evidence.location.lng}` : null
+                  },
+                  { label: 'Transcription', value: evidence.transcription_status || 'Not Started', icon: <Mic size={14} />, highlight: evidence.transcription_status === 'completed' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between group">
+                    <dt className="text-[10px] uppercase font-bold tracking-wider text-gray-400 flex items-center gap-2">
+                      <span className="text-gray-300 group-hover:text-blue-400 transition-colors">{item.icon}</span>
+                      {item.label}
+                    </dt>
+                    <dd className={`text-xs font-medium ${item.highlight ? 'text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full' : 'text-gray-700'}`}>
+                      {item.isLink ? (
+                        <a href={item.linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {item.value}
+                        </a>
+                      ) : (
+                        item.value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </div>
+
+              {evidence.description && (
+                <div className="mt-5 pt-4 border-t border-gray-50">
+                  <dt className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-1.5 flex items-center gap-2">
+                    <FileText size={10} />
+                    Description
+                  </dt>
+                  <dd className="text-xs text-gray-600 leading-relaxed bg-gray-100/40 p-3 rounded-lg border border-gray-100 italic">
+                    "{evidence.description}"
+                  </dd>
                 </div>
-              ))}
+              )}
+
               {evidence.tags?.length > 0 && (
-                <div>
-                  <dt className="text-xs text-gray-500">Tags</dt>
-                  <dd className="flex flex-wrap gap-1 mt-1">
+                <div className="mt-4">
+                  <dt className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 flex items-center gap-2">
+                    <Hash size={10} />
+                    Tags
+                  </dt>
+                  <dd className="flex flex-wrap gap-1.5">
                     {evidence.tags.map(tag => (
-                      <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">{tag}</span>
+                      <span key={tag} className="px-2 py-0.5 bg-blue-100/40 text-blue-600 border border-blue-100/50 rounded-md text-[10px] font-semibold">
+                        #{tag}
+                      </span>
                     ))}
                   </dd>
                 </div>
               )}
-            </dl>
+              <div className="mt-6 pt-5 border-t border-gray-100">
+                <dt className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+                  <LinkIcon size={12} />
+                  Cross-Case Linking
+                </dt>
+
+                <div className="space-y-2 mb-4">
+                  {evidence.linked_cases?.map(c => (
+                    <div key={c.case_id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100 group">
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-gray-900">{c.case_number}</span>
+                        <span className="text-[10px] text-gray-500 truncate max-w-[150px]">{c.title}</span>
+                      </div>
+                      <button
+                        onClick={() => handleUnlinkCase(c.case_id)}
+                        disabled={isLinking || (evidence.linked_cases?.length <= 1)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-red-100 hover:text-red-600 transition-all disabled:hidden"
+                        title="Remove link"
+                      >
+                        <Unlink size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {(!evidence.linked_cases || evidence.linked_cases.length === 0) && (
+                    <div className="text-[10px] text-gray-400 italic p-2 bg-gray-50 rounded-lg border border-dashed text-center">
+                      No case links found
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={selectedCaseToLink}
+                    onChange={(e) => setSelectedCaseToLink(e.target.value)}
+                    className="flex-1 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] outline-none focus:border-blue-400"
+                  >
+                    <option value="">Link to case...</option>
+                    {allCases
+                      .filter(c => !evidence.linked_cases?.some(lc => lc.case_id === c.case_id))
+                      .map(c => (
+                        <option key={c.case_id} value={c.case_id}>
+                          {c.case_number} - {c.title}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  <button
+                    onClick={handleLinkCase}
+                    disabled={!selectedCaseToLink || isLinking}
+                    className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isLinking ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Hash Information</h2>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-xs text-gray-500">Original Hash (SHA-256)</dt>
-                <dd className="text-xs text-gray-900 mt-0.5 font-mono break-all">{evidence.original_hash}</dd>
-              </div>
+          <div className="bg-gray-100/50 rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-50 bg-gray-50/30 flex items-center gap-2">
+              <ShieldCheck size={18} className="text-blue-600" />
+              <h2 className="font-semibold text-gray-900">Integrity Verification</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              <HashDisplay label="Original Fingerprint" hash={evidence.original_hash} />
+
               {evidence.current_hash && (
-                <div>
-                  <dt className="text-xs text-gray-500">Last Verified Hash</dt>
-                  <dd className="text-xs text-gray-900 mt-0.5 font-mono break-all">{evidence.current_hash}</dd>
-                </div>
+                <HashDisplay
+                  label="Last Verified Fingerprint"
+                  hash={evidence.current_hash}
+                  className={evidence.integrity_status === 'tampered' ? 'border-red-200 bg-red-50/30' : ''}
+                />
               )}
+
               {evidence.last_verified_at && (
-                <div>
-                  <dt className="text-xs text-gray-500">Last Verified</dt>
-                  <dd className="text-sm text-gray-900 mt-0.5">{formatDate(evidence.last_verified_at)}</dd>
+                <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-100/40 p-2 rounded-lg border border-gray-50">
+                  <Clock size={14} className="text-gray-400" />
+                  <span>Last check: <b>{formatDate(evidence.last_verified_at)}</b></span>
                 </div>
               )}
-            </dl>
+
+              <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-100/50 flex gap-2.5">
+                <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-blue-700 leading-relaxed">
+                  Cryptographic hashes are unique identifiers that guarantee the file has not been altered. Any change to the content would result in a mismatch.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Hash History + Audit Log */}
         <div className="lg:col-span-2 space-y-6">
+
+
           <AuditSummaryCard evidenceId={id} />
           {/* Hash History */}
-          <div className="bg-white rounded-lg border">
-            <div className="px-6 py-4 border-b">
-              <h2 className="font-semibold text-gray-900">Hash History</h2>
+          <div className="bg-gray-100/50 rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[644px]">
+            <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <History size={18} className="text-blue-600" />
+                <h2 className="font-semibold text-gray-900">Hash History</h2>
+              </div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                {hashHistory.length} Total
+              </span>
             </div>
             {hashHistory.length === 0 ? (
-              <p className="p-6 text-gray-500">No hash records</p>
-            ) : (
-              <div className="divide-y">
-                {hashHistory.map(r => (
-                  <div key={r.record_id} className="px-6 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-gray-700 break-all">{r.hash_value}</span>
-                      <span className={`text-xs font-medium ${r.matches_original ? 'text-green-600' : 'text-red-600'}`}>
-                        {r.matches_original ? 'Match' : 'MISMATCH'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{r.event_type} &middot; {formatDate(r.computed_at)}</p>
-                  </div>
-                ))}
+              <div className="p-10 text-center flex-1 flex flex-col items-center justify-center">
+                <Fingerprint size={32} className="text-gray-200 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm italic">No hash records available.</p>
               </div>
-            )}
-          </div>
-
-          {/* Audit Trail */}
-          <div className="bg-white rounded-lg border">
-            <div className="px-6 py-4 border-b">
-              <h2 className="font-semibold text-gray-900">Audit Trail</h2>
-            </div>
-            {auditLogs.length === 0 ? (
-              <p className="p-6 text-gray-500">No audit entries</p>
             ) : (
-              <div className="divide-y">
-                {auditLogs.map(log => (
-                  <div key={log.log_id} className="px-6 py-3">
-                    <p className="text-sm text-gray-900">{log.details}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {log.user_email} &middot; {log.action} &middot; {formatDate(log.timestamp)}
-                    </p>
-                  </div>
-                ))}
+              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-100">
+                <div className="divide-y divide-gray-50">
+                  {hashHistory.map(r => (
+                    <div key={r.record_id} className="px-6 py-4 hover:bg-gray-50/50 transition-colors group">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${r.matches_original ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                            {r.matches_original ? <ShieldCheck size={16} /> : <AlertTriangle size={16} />}
+                          </div>
+                          <div>
+                            <p className="text-xs font-mono text-gray-600 flex items-center gap-2">
+                              {r.hash_value.substring(0, 16)}...{r.hash_value.substring(r.hash_value.length - 8)}
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(r.hash_value)
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-blue-600"
+                                title="Copy hash"
+                              >
+                                <Copy size={10} />
+                              </button>
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${r.event_type === 'upload' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                {r.event_type}
+                              </span>
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <Clock size={10} />
+                                {formatDate(r.computed_at)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${r.matches_original ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                            {r.matches_original ? 'Fingerprint Match' : 'TAMPERED'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* Audit Trail - Full Width Mobile Responsive */}
+      <div className="mt-6">
+        <div className="bg-gray-100/50 rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[320px]">
+          <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <Activity size={18} className="text-blue-600" />
+              <h2 className="font-semibold text-gray-900">Comprehensive Audit Trail</h2>
+            </div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Total {auditLogs.length} Events
+            </span>
+          </div>
+          {auditLogs.length === 0 ? (
+            <div className="p-10 text-center flex-1 flex flex-col items-center justify-center">
+              <FileText size={32} className="text-gray-200 mx-auto mb-2" />
+              <p className="text-gray-400 text-sm italic">No entries in the audit trail.</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-100">
+              <div className="divide-y divide-gray-50">
+                {auditLogs.map(log => (
+                  <div key={log.log_id} className="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-gray-50 rounded-lg text-gray-400 shrink-0">
+                        {log.action.includes('transfer') ? <ArrowRightLeft size={16} /> :
+                          log.action.includes('verify') ? <ShieldCheck size={16} /> :
+                            <Activity size={16} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900 leading-snug">{log.details}</p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                          <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100/30">
+                            {log.action.replace('_', ' ')}
+                          </span>
+                          <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5">
+                            <User size={12} className="text-gray-400" />
+                            {log.user_email}
+                          </span>
+                          <span className="text-[11px] text-gray-400 flex items-center gap-1.5 ml-auto">
+                            <Clock size={12} className="text-gray-300" />
+                            {formatDate(log.timestamp)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       {/* Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={handleClosePreview}>
@@ -370,7 +722,13 @@ export default function EvidenceDetailPage() {
                   <p className="text-sm text-gray-500">Generating watermarked preview...</p>
                 </div>
               ) : previewUrl ? (
-                <img src={previewUrl} alt="Watermarked preview" className="max-w-full max-h-[70vh] object-contain" />
+                evidence?.file_type?.startsWith('video/') || evidence?.file_name?.toLowerCase().endsWith('.mp4') ? (
+                  <video src={previewUrl} controls className="max-w-full max-h-[70vh]" />
+                ) : evidence?.file_type?.startsWith('audio/') || evidence?.file_name?.toLowerCase().match(/\.(mp3|wav|m4a)$/) ? (
+                  <audio src={previewUrl} controls className="w-full" />
+                ) : (
+                  <img src={previewUrl} alt="Watermarked preview" className="max-w-full max-h-[70vh] object-contain" />
+                )
               ) : null}
             </div>
           </div>

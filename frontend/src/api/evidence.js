@@ -32,6 +32,31 @@ export const previewEvidence = (evidenceId) =>
 export const getEvidenceTrustScore = (evidenceId) =>
   client.get(`/evidence/${evidenceId}/trust-score`)
 
+export const transcribeEvidence = (evidenceId) =>
+  client.post(`/evidence/${evidenceId}/transcribe`)
+
+// Share link functions
+export const createShareLink = (evidenceId, expiresInHours, recipientEmail) =>
+  client.post(`/evidence/${evidenceId}/share`, {
+    expires_in_hours: expiresInHours,
+    recipient_email: recipientEmail
+  })
+
+export const getShareTokens = (evidenceId) =>
+  client.get(`/evidence/${evidenceId}/shares`)
+
+export const revokeShareToken = (tokenId) =>
+  client.delete(`/evidence/shares/${tokenId}`)
+
+export const getSharedEvidence = (token) =>
+  client.get(`/evidence/public/shared/${token}`)
+
+export const linkEvidenceToCase = (evidenceId, caseId) =>
+  client.post(`/evidence/${evidenceId}/link/${caseId}`)
+
+export const unlinkEvidenceFromCase = (evidenceId, caseId) =>
+  client.delete(`/evidence/${evidenceId}/unlink/${caseId}`)
+
 export const getAnalytics = () =>
   client.get('/evidence/analytics')
 

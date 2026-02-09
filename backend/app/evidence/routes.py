@@ -7,12 +7,16 @@ from app.auth.decorators import permission_required
 from app.common.constants import EVIDENCE_CATEGORIES, EVIDENCE_CLASSIFICATIONS, Permissions
 from app.common.errors import APIError, NotFoundError
 from app.evidence import evidence_bp
+from app.common.constants import Roles
 from app.evidence.services import (
     create_evidence,
     get_evidence,
     get_evidence_list,
     get_hash_history,
+    link_evidence_to_case,
+    resolve_file_path,
     store_evidence_file,
+    unlink_evidence_from_case,
     update_evidence,
     verify_evidence_integrity,
 )
@@ -89,6 +93,10 @@ def upload_evidence():
 @evidence_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_evidence():
+    current_user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(current_user_id)
+
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
     case_id = request.args.get("case_id")
@@ -96,10 +104,16 @@ def list_evidence():
     status = request.args.get("status")
     search = request.args.get("search")
 
+    # Data isolation: non-admins only see evidence they are custodian of
+    custodian_id = None
+    if user and user.get("role") != Roles.ADMIN:
+        custodian_id = current_user_id
+
     result = get_evidence_list(
         page=page, per_page=per_page,
         case_id=case_id, category=category,
         status=status, search=search,
+        custodian_id=custodian_id,
     )
     return jsonify(result)
 
@@ -259,8 +273,13 @@ def download_evidence(evidence_id):
         details=f"Downloaded evidence {ev['file_name']}",
     )
 
+    import os
+    file_path = resolve_file_path(ev["file_path"])
+    if not os.path.exists(file_path):
+        raise NotFoundError("File not found on disk")
+
     return send_file(
-        ev["file_path"],
+        file_path,
         as_attachment=True,
         download_name=ev["file_name"],
     )
@@ -283,12 +302,17 @@ def preview_evidence(evidence_id):
     import mimetypes
     mime = ev.get("file_type") or mimetypes.guess_type(ev["file_name"])[0] or "application/octet-stream"
 
+    import os
+    file_path = resolve_file_path(ev["file_path"])
+    if not os.path.exists(file_path):
+        raise NotFoundError("File not found on disk")
+
     # For images, apply watermark
     previewable_images = {"image/jpeg", "image/png", "image/gif", "image/webp"}
     if mime in previewable_images:
         from app.evidence.preview import create_watermarked_image
         watermarked = create_watermarked_image(
-            ev["file_path"],
+            file_path,
             user["full_name"],
             user["email"],
         )
@@ -305,9 +329,11 @@ def preview_evidence(evidence_id):
             )
             return send_file(watermarked, mimetype=mime)
 
-    # For PDFs and text, serve directly (watermark handled client-side)
+    # For PDFs, text, audio, and video - serve directly
     previewable = {"application/pdf", "text/plain", "text/csv", "application/json", "text/html"}
-    if mime in previewable:
+    previewable_media = {"video/mp4", "video/quicktime", "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-m4a", "audio/mp4"}
+
+    if mime in previewable or mime in previewable_media or mime.startswith("video/") or mime.startswith("audio/"):
         from app.audit.services import log_action
         log_action(
             action="evidence_viewed",
@@ -318,7 +344,7 @@ def preview_evidence(evidence_id):
             user_role=user["role"],
             details=f"Previewed evidence {ev['file_name']}",
         )
-        return send_file(ev["file_path"], mimetype=mime)
+        return send_file(file_path, mimetype=mime)
 
     return jsonify({"error": "Preview not available for this file type", "mime_type": mime}), 415
 
@@ -461,3 +487,248 @@ def get_trust_score(evidence_id):
         raise NotFoundError("Evidence not found")
 
     return jsonify(result)
+
+
+# ============================================================================
+# EVIDENCE SHARING ENDPOINTS
+# ============================================================================
+
+@evidence_bp.route("/<evidence_id>/share", methods=["POST"])
+@jwt_required()
+def create_share_link(evidence_id):
+    """Create a new share link for evidence."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    ev = get_evidence(evidence_id)
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    data = request.get_json() or {}
+    expires_in_hours = data.get("expires_in_hours", 24)
+    recipient_email = data.get("recipient_email")
+
+    if expires_in_hours < 1 or expires_in_hours > 720:
+        raise APIError("Expiration must be between 1 and 720 hours", 400)
+
+    from app.evidence.sharing import create_share_token
+    share_token = create_share_token(
+        evidence_id=evidence_id,
+        created_by_id=user["user_id"],
+        created_by_email=user["email"],
+        expires_in_hours=expires_in_hours,
+        recipient_email=recipient_email,
+    )
+
+    frontend_base_url = "http://localhost:5173"
+    share_url = f"{frontend_base_url}/shared/{share_token['token']}"
+
+    return jsonify({
+        "message": "Share link created successfully",
+        "share_token": share_token,
+        "share_url": share_url,
+    }), 201
+
+
+@evidence_bp.route("/<evidence_id>/shares", methods=["GET"])
+@jwt_required()
+def list_share_tokens(evidence_id):
+    """List all active share tokens for an evidence."""
+    ev = get_evidence(evidence_id)
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    from app.evidence.sharing import get_share_tokens_for_evidence
+    tokens = get_share_tokens_for_evidence(evidence_id)
+
+    for token in tokens:
+        token.pop("token", None)
+
+    return jsonify({"share_tokens": tokens}), 200
+
+
+@evidence_bp.route("/shares/<token_id>", methods=["DELETE"])
+@jwt_required()
+def revoke_share_link(token_id):
+    """Revoke a share token."""
+    user_id = get_jwt_identity()
+
+    from app.evidence.sharing import revoke_share_token
+    success = revoke_share_token(token_id, user_id)
+    if not success:
+        raise NotFoundError("Share token not found")
+
+    return jsonify({"message": "Share link revoked successfully"}), 200
+
+
+@evidence_bp.route("/public/shared/<token>", methods=["GET"])
+def get_shared_evidence(token):
+    """Public endpoint to access shared evidence (no authentication required)."""
+    from app.evidence.sharing import validate_share_token
+
+    share_token = validate_share_token(token)
+    if not share_token:
+        raise APIError("Invalid or expired share link", 403)
+
+    ev = mongo.db.evidence.find_one({"evidence_id": share_token["evidence_id"]})
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    from app.audit.services import log_action
+    log_action(
+        action="evidence_accessed_via_share",
+        entity_type="evidence",
+        entity_id=ev["evidence_id"],
+        user_id="public",
+        user_email=share_token.get("recipient_email", "unknown"),
+        user_role="public",
+        details=f"Evidence accessed via share link (access count: {share_token['access_count']})",
+    )
+
+    from app.evidence.services import _serialize
+    serialized_ev = _serialize(ev)
+
+    return jsonify({
+        "evidence": serialized_ev,
+        "share_info": {
+            "expires_at": share_token["expires_at"],
+            "created_by_email": share_token["created_by_email"],
+        },
+    }), 200
+
+
+@evidence_bp.route("/public/shared/<token>/download", methods=["GET"])
+def download_shared_evidence(token):
+    """Public endpoint to download shared evidence file."""
+    from app.evidence.sharing import validate_share_token
+
+    share_token = validate_share_token(token)
+    if not share_token:
+        raise APIError("Invalid or expired share link", 403)
+
+    ev = mongo.db.evidence.find_one({"evidence_id": share_token["evidence_id"]})
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    import os
+    file_path = resolve_file_path(ev["file_path"])
+    if not os.path.exists(file_path):
+        raise NotFoundError("File not found")
+
+    return send_file(file_path, as_attachment=True, download_name=ev["file_name"])
+
+
+# ============================================================================
+# EVIDENCE CASE LINKING ENDPOINTS
+# ============================================================================
+
+@evidence_bp.route("/<evidence_id>/link/<target_case_id>", methods=["POST"])
+@jwt_required()
+def link_case_route(evidence_id, target_case_id):
+    """Link an existing evidence item to another case."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+
+    target_case = mongo.db.cases.find_one({"case_id": target_case_id})
+    if not target_case:
+        raise NotFoundError("Target case not found")
+
+    ev = link_evidence_to_case(evidence_id, target_case_id)
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    from app.audit.services import log_action
+    log_action(
+        action="evidence_linked_to_case",
+        entity_type="evidence",
+        entity_id=evidence_id,
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
+        details=f"Linked evidence {ev['file_name']} to case {target_case['case_number']}",
+        metadata={"case_id": target_case_id, "case_number": target_case["case_number"]},
+    )
+
+    return jsonify({"message": f"Evidence linked to case {target_case['case_number']}", "evidence": ev})
+
+
+@evidence_bp.route("/<evidence_id>/unlink/<target_case_id>", methods=["DELETE"])
+@jwt_required()
+def unlink_case_route(evidence_id, target_case_id):
+    """Remove a link between evidence and a case."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+
+    ev = unlink_evidence_from_case(evidence_id, target_case_id)
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    target_case = mongo.db.cases.find_one({"case_id": target_case_id})
+    case_num = target_case["case_number"] if target_case else target_case_id
+
+    from app.audit.services import log_action
+    log_action(
+        action="evidence_unlinked_from_case",
+        entity_type="evidence",
+        entity_id=evidence_id,
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
+        details=f"Unlinked evidence {ev['file_name']} from case {case_num}",
+        metadata={"case_id": target_case_id, "case_number": case_num},
+    )
+
+    return jsonify({"message": f"Evidence unlinked from case {case_num}", "evidence": ev})
+
+
+# ============================================================================
+# TRANSCRIPTION ENDPOINT
+# ============================================================================
+
+@evidence_bp.route("/<evidence_id>/transcribe", methods=["POST"])
+@jwt_required()
+def transcribe_evidence_route(evidence_id):
+    """Start background transcription task for audio/video evidence."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    ev = mongo.db.evidence.find_one({"evidence_id": evidence_id})
+    if not ev:
+        raise NotFoundError("Evidence not found")
+
+    mime = ev.get("file_type", "")
+    fname = ev.get("file_name", "").lower()
+    if not (mime.startswith("audio/") or mime.startswith("video/") or fname.endswith((".mp3", ".mp4", ".wav", ".m4a"))):
+        return jsonify({"error": "File type not supported for transcription"}), 400
+
+    import os
+    file_path = resolve_file_path(ev["file_path"])
+    if not os.path.exists(file_path):
+        raise NotFoundError("File not found on disk")
+
+    try:
+        from app.evidence.transcription import start_transcription_task
+        start_transcription_task(evidence_id, file_path)
+    except ImportError:
+        return jsonify({"error": "Transcription module not available (whisper not installed)"}), 501
+
+    from app.audit.services import log_action
+    log_action(
+        action="transcription_started",
+        entity_type="evidence",
+        entity_id=evidence_id,
+        user_id=user["user_id"],
+        user_email=user["email"],
+        user_role=user["role"],
+        details=f"Started transcription for {ev['file_name']}",
+    )
+
+    return jsonify({"message": "Transcription started", "status": "processing"}), 202

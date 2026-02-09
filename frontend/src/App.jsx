@@ -13,6 +13,7 @@ import CaseDetailPage from './pages/CaseDetailPage'
 import TransfersPage from './pages/TransfersPage'
 import AuditLogPage from './pages/AuditLogPage'
 import RetentionPage from './pages/RetentionPage'
+import SharedEvidencePage from './pages/SharedEvidencePage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/share/:token" element={<SharedEvidencePage />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>

@@ -90,6 +90,11 @@ def _create_indexes(db):
     db.notifications.create_index([("user_id", 1), ("is_read", 1)])
     db.notifications.create_index("created_at")
 
+    db.share_tokens.create_index("token", unique=True)
+    db.share_tokens.create_index("token_id", unique=True)
+    db.share_tokens.create_index("evidence_id")
+    db.share_tokens.create_index("expires_at")
+
 
 def register_jwt_debug_handlers(jwt):
     @jwt.invalid_token_loader
