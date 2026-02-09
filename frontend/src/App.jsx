@@ -12,6 +12,7 @@ import CasesPage from './pages/CasesPage'
 import CaseDetailPage from './pages/CaseDetailPage'
 import TransfersPage from './pages/TransfersPage'
 import AuditLogPage from './pages/AuditLogPage'
+import RetentionPage from './pages/RetentionPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
               <Route path="/cases/:id" element={<CaseDetailPage />} />
               <Route path="/transfers" element={<TransfersPage />} />
               <Route path="/audit" element={<AuditLogPage />} />
+              <Route path="/retention" element={<RetentionPage />} />
             </Route>
           </Route>
 

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Calendar, FileText, Shield,
   HardDrive, Clock, Hash, Download, Eye,
-  CheckCircle, AlertTriangle, History
+  CheckCircle, AlertTriangle, History, MapPin
 } from 'lucide-react'
 import { getCase, getCaseEvidence } from '../api/cases'
 import { downloadCaseReport } from '../api/reports'
@@ -11,6 +11,7 @@ import { formatDate, formatFileSize } from '../utils/formatters'
 import StatusBadge from '../components/common/StatusBadge'
 import IntegrityBadge from '../components/common/IntegrityBadge'
 import CaseTimeline from '../components/cases/CaseTimeline'
+import EvidenceMap from '../components/evidence/EvidenceMap'
 import { Card } from '../components/common/Card'
 import { Badge } from '../components/common/Badge'
 import { Button } from '../components/common/Button'
@@ -264,6 +265,13 @@ export default function CaseDetailPage() {
                 <History className="w-4 h-4" />
                 Timeline
               </button>
+              <button
+                onClick={() => setActiveTab('map')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'map' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                <MapPin className="w-4 h-4" />
+                Map
+              </button>
             </div>
             {activeTab === 'evidence' && (
               <Link to="/evidence/upload">
@@ -279,6 +287,13 @@ export default function CaseDetailPage() {
           {activeTab === 'timeline' && (
             <Card className="p-6">
               <CaseTimeline caseId={id} />
+            </Card>
+          )}
+
+          {/* Map Tab */}
+          {activeTab === 'map' && (
+            <Card className="p-6">
+              <EvidenceMap evidenceList={evidence} />
             </Card>
           )}
 

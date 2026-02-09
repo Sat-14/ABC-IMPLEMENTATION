@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Upload, Search, Filter, FileText, Image, Video, Music, Globe, Database, HardDrive, Mail, Briefcase, ChevronRight, ArrowLeft } from 'lucide-react'
-import { getEvidenceList } from '../api/evidence'
+import { Upload, Search, Filter, FileText, Image, Video, Music, Globe, Database, HardDrive, Mail, Briefcase, ChevronRight, ArrowLeft, Shield, CheckSquare, Download } from 'lucide-react'
+import { getEvidenceList, bulkVerify, exportEvidenceCSV } from '../api/evidence'
 import { getCases } from '../api/cases'
 import useAuth from '../hooks/useAuth'
 import { hasPermission } from '../utils/roles'
@@ -37,7 +37,48 @@ export default function EvidenceListPage() {
   const [cases, setCases] = useState([])
   const [selectedCase, setSelectedCase] = useState(null)
   const [fetchingCases, setFetchingCases] = useState(true)
+  const [selected, setSelected] = useState(new Set())
+  const [bulkVerifying, setBulkVerifying] = useState(false)
+  const [bulkResult, setBulkResult] = useState(null)
   const location = useLocation()
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    if (selected.size === evidence.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(evidence.map(e => e.evidence_id)))
+    }
+  }
+
+  async function handleBulkVerify() {
+    if (selected.size === 0) return
+    setBulkVerifying(true)
+    setBulkResult(null)
+    try {
+      const res = await bulkVerify([...selected])
+      setBulkResult(res.data.summary)
+      setSelected(new Set())
+      // Reload evidence list to show updated statuses
+      const params = { page, per_page: 10, case_id: selectedCase.case_id }
+      if (search) params.search = search
+      if (filters.category) params.category = filters.category
+      if (filters.status) params.status = filters.status
+      const eRes = await getEvidenceList(params)
+      setEvidence(eRes.data.evidence || [])
+    } catch {
+      alert('Bulk verification failed')
+    } finally {
+      setBulkVerifying(false)
+    }
+  }
 
   useEffect(() => {
     async function loadCases() {
@@ -166,14 +207,36 @@ export default function EvidenceListPage() {
             <p className="text-text-secondary mt-0.5 font-medium">{selectedCase.title}</p>
           </div>
         </div>
-        {hasPermission(user?.role, 'upload') && (
-          <Link to="/evidence/upload">
-            <Button>
-              <Upload className="w-4 h-4" />
-              Upload Evidence
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const res = await exportEvidenceCSV(selectedCase?.case_id)
+                const url = window.URL.createObjectURL(new Blob([res.data]))
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', `evidence-${selectedCase?.case_number || 'all'}.csv`)
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+              } catch { /* silent */ }
+            }}
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+          {hasPermission(user?.role, 'upload') && (
+            <Link to="/evidence/upload">
+              <Button>
+                <Upload className="w-4 h-4" />
+                Upload Evidence
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -213,6 +276,37 @@ export default function EvidenceListPage() {
         </div>
       </Card>
 
+      {/* Bulk Actions Bar */}
+      {evidence.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={toggleAll}
+            className="flex items-center gap-2 text-xs font-medium text-text-secondary hover:text-primary-600 transition-colors"
+          >
+            <CheckSquare className={`w-4 h-4 ${selected.size === evidence.length ? 'text-primary-600' : ''}`} />
+            {selected.size === evidence.length ? 'Deselect All' : 'Select All'}
+          </button>
+          {selected.size > 0 && (
+            <>
+              <Badge variant="primary">{selected.size} selected</Badge>
+              {hasPermission(user?.role, 'verify') && (
+                <Button size="sm" variant="outline" onClick={handleBulkVerify} disabled={bulkVerifying}>
+                  <Shield className="w-3.5 h-3.5" />
+                  {bulkVerifying ? 'Verifying...' : 'Bulk Verify'}
+                </Button>
+              )}
+            </>
+          )}
+          {bulkResult && (
+            <div className="text-xs font-medium ml-auto">
+              <span className="text-green-600">{bulkResult.intact} intact</span>
+              {bulkResult.tampered > 0 && <span className="text-red-600 ml-2">{bulkResult.tampered} tampered</span>}
+              <span className="text-text-tertiary ml-2">({bulkResult.total} verified)</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-3">
         {loading ? (
           <div className="text-center py-12 text-text-tertiary">Loading evidence...</div>
@@ -231,6 +325,12 @@ export default function EvidenceListPage() {
               <Card key={e.evidence_id} hoverEffect className="group py-4 px-5 border border-border-subtle hover:border-primary-500/30">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(e.evidence_id)}
+                      onChange={() => toggleSelect(e.evidence_id)}
+                      className="mt-3 w-4 h-4 rounded border-border-subtle text-primary-600 focus:ring-primary-500 shrink-0 cursor-pointer"
+                    />
                     <div className="p-2.5 rounded-xl bg-bg-secondary text-text-secondary shrink-0 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors border border-border-subtle">
                       <Icon className="w-5 h-5" />
                     </div>

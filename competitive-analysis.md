@@ -173,3 +173,70 @@
 5. **Zero Cost, Open Source** - Every competitor requires commercial licensing. Our entire stack (Flask + React + MongoDB) is open-source and deployable by any agency without vendor lock-in.
 
 6. **No External Dependencies** - Works offline with no cloud APIs, no external AI services, and no internet requirement. Suitable for secure/air-gapped environments.
+
+---
+
+## Feature Gap Analysis: What Competitors Have That We Don't
+
+After analyzing all major competitors, here are valuable features they offer that our DCoC system currently lacks, ranked by implementation feasibility and impact.
+
+### High Priority (High Impact, Feasible to Implement)
+
+| # | Feature | Who Has It | What It Does | Can We Implement? |
+|---|---------|-----------|--------------|-------------------|
+| 1 | **Analytics Dashboard with Charts** | Axon, VIDIZMO, Tracker SAFE | Visual charts/graphs for evidence stats, case trends, user activity, storage usage, and monthly intake trends | Yes - add Recharts library to existing Dashboard page. Show evidence by category (pie), uploads over time (line), trust score distribution (bar), transfers by status (donut) |
+| 2 | **Automated Retention & Disposal Policies** | Tracker SAFE, Genetec, Axon | Auto-flag evidence for disposal based on case status/age, officer notification for approval, documented destruction | Yes - add retention_policy field to cases, background check for expired evidence, disposal approval workflow with audit logging |
+| 3 | **Bulk Operations** | Tracker SAFE, Axon, VIDIZMO | Bulk upload multiple files, bulk verify integrity, bulk transfer, bulk export | Yes - extend upload to accept multiple files, add "select all" + batch verify/transfer on evidence list page |
+| 4 | **Evidence Geo-Location & Mapping** | Genetec Clearance, VIDIZMO | Map view showing where evidence was collected, GPS tagging at upload, geographic case visualization | Yes - add optional lat/lng fields at upload, integrate Leaflet.js map on case detail page showing evidence locations |
+| 5 | **CSV/Excel Export** | Tracker SAFE, Omnigo, Kaseware | Export evidence lists, audit logs, case data to CSV/Excel for external reporting and compliance audits | Yes - add export endpoints returning CSV, frontend download button on list pages |
+
+### Medium Priority (Moderate Impact, Moderate Effort)
+
+| # | Feature | Who Has It | What It Does | Can We Implement? |
+|---|---------|-----------|--------------|-------------------|
+| 6 | **AI-Powered Auto-Transcription** | Axon, VIDIZMO, DigitalEvidence.ai | Automatic speech-to-text for audio/video evidence, searchable transcripts | Partially - could integrate Whisper (open-source) for local transcription. Adds ML dependency but stays offline-capable |
+| 7 | **Automated PII Redaction** | Axon, VIDIZMO, Genetec, DigitalEvidence.ai | Auto-detect and blur faces, license plates, names in evidence before sharing with prosecutors/public | Partially - could use OpenCV for basic face detection redaction on images/video. Resource-intensive for video |
+| 8 | **External Evidence Sharing** | Genetec, Axon, VIDIZMO | Secure link sharing with prosecutors, defense attorneys, or other agencies with time-limited access tokens | Yes - generate expiring share tokens with read-only access, no account required for recipients |
+| 9 | **Mobile Evidence Collection App** | Tracker SAFE, Genetec (Clearance Seen app) | Field officers capture photos/videos from mobile devices with GPS + timestamp, auto-upload to platform | Partially - make frontend PWA-compatible for mobile browser uploads with device camera access |
+| 10 | **Cross-Case Evidence Linking** | Tracker SAFE, Kaseware | Link same evidence item across multiple cases, track related evidence items | Yes - add many-to-many relationship between evidence and cases instead of current one-to-one |
+
+### Lower Priority (Nice-to-Have)
+
+| # | Feature | Who Has It | What It Does | Can We Implement? |
+|---|---------|-----------|--------------|-------------------|
+| 11 | **Multi-Language Support (i18n)** | VIDIZMO (50+ languages) | UI available in multiple languages for international/multi-jurisdiction use | Yes but effort-heavy - use react-i18next, extract all strings to locale files |
+| 12 | **RMS/Lab System Integration** | Tracker SAFE, Kaseware | API integrations with Records Management Systems, forensic lab systems, court filing systems | Yes - our REST API is already integration-ready; would need to build specific connectors per system |
+| 13 | **Barcode/QR Code Scanning** | Tracker SAFE, Omnigo | Generate and scan barcodes/QR codes for physical evidence items that link to digital records | Partially relevant - we focus on digital evidence, but QR codes on printed reports linking to digital records could be useful |
+| 14 | **AI Activity/Anomaly Detection** | VIDIZMO, DigitalEvidence.ai | Detect suspicious access patterns, unusual download activity, off-hours access | Yes - rule-based anomaly flags (downloads at unusual hours, bulk access, cross-case access patterns) fits our XAI approach |
+| 15 | **Automated Storage Tier Management** | Axon, Genetec | Move old evidence to cheaper cold storage, auto-compress, manage storage costs | Lower priority for on-premise deployment, more relevant for cloud-hosted version |
+
+---
+
+## Recommended Next Implementations
+
+Based on impact for the **TrustAI Ideathon presentation** and implementation feasibility:
+
+1. **Analytics Dashboard with Charts** - Most visually impressive for a demo. Add Recharts to Dashboard page with 4-5 interactive charts showing evidence statistics, trust score distributions, and activity trends.
+
+2. **Evidence Geo-Location Map** - Visually compelling for presentation. Add Leaflet.js map showing where evidence was collected. Demonstrates modern UI capabilities.
+
+3. **Bulk Operations** - Demonstrates production-readiness. Bulk verify, bulk transfer actions on evidence list.
+
+4. **CSV Export** - Quick win for compliance story. "Agencies can export audit data for external compliance reviews."
+
+5. **Anomaly Detection (XAI)** - Fits the XAI/Trusted AI theme perfectly. Rule-based suspicious activity detection with explainable alerts (e.g., "User X accessed 15 evidence items in 2 minutes - unusual pattern"). Strengthens the AI narrative without adding black-box ML.
+
+---
+
+## Sources
+
+- [Axon Evidence - Secure, AI-Powered Digital Evidence Management](https://www.axon.com/products/axon-evidence)
+- [Redesigned Axon Evidence](https://www.axon.com/resources/redesigned-axon-evidence-built-for-the-way-you-work)
+- [VIDIZMO Digital Evidence Management](https://vidizmo.ai/digital-evidence-management)
+- [VIDIZMO AI for Law Enforcement](https://vidizmo.ai/industries/law-enforcement)
+- [Tracker Products SAFE Features](https://trackerproducts.com/features/)
+- [Tracker Products Evidence Lifecycle](https://trackerproducts.com/evidence-lifecycle-management/)
+- [Genetec Clearance DEMS](https://www.genetec.com/products/operations/clearance)
+- [Genetec Clearance Case Management](https://www.genetec.com/products/operations/clearance/case-management)
+- [DigitalEvidence.ai](https://digitalevidence.ai/)
+- [AI-Powered Digital Evidence Management in 2025](https://digitalevidence.ai/blog/ai-powered-digital-evidence-management-in-2025)

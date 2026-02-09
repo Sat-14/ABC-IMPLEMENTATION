@@ -61,6 +61,9 @@ def upload_evidence():
         description=request.form.get("description", ""),
         tags=request.form.get("tags", ""),
         uploaded_by_id=user["user_id"],
+        latitude=request.form.get("latitude"),
+        longitude=request.form.get("longitude"),
+        collection_location=request.form.get("collection_location", ""),
     )
 
     from app.audit.services import log_action
@@ -318,6 +321,133 @@ def preview_evidence(evidence_id):
         return send_file(ev["file_path"], mimetype=mime)
 
     return jsonify({"error": "Preview not available for this file type", "mime_type": mime}), 415
+
+
+@evidence_bp.route("/retention/check", methods=["GET"])
+@jwt_required()
+def check_retention_policies():
+    """Check all evidence against retention policies."""
+    from app.evidence.retention import check_retention
+
+    return jsonify(check_retention())
+
+
+@evidence_bp.route("/<evidence_id>/dispose", methods=["POST"])
+@permission_required(Permissions.DELETE)
+def dispose_evidence_route(evidence_id):
+    """Mark evidence as disposed per retention policy."""
+    from app.evidence.retention import dispose_evidence
+
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    reason = data.get("reason", "Retention policy expired")
+
+    result = dispose_evidence(evidence_id, user_id, reason)
+    if not result:
+        raise NotFoundError("Evidence not found")
+    if "error" in result:
+        raise APIError(result["error"])
+
+    return jsonify(result)
+
+
+@evidence_bp.route("/bulk/verify", methods=["POST"])
+@permission_required(Permissions.VERIFY)
+def bulk_verify():
+    """Verify integrity of multiple evidence items at once."""
+    user_id = get_jwt_identity()
+    from app.auth.services import find_user_by_id
+    user = find_user_by_id(user_id)
+    if not user:
+        raise APIError("User not found", 404)
+
+    data = request.get_json() or {}
+    evidence_ids = data.get("evidence_ids", [])
+    if not evidence_ids:
+        raise APIError("No evidence IDs provided")
+
+    results = []
+    for eid in evidence_ids[:50]:  # Limit to 50 at a time
+        result = verify_evidence_integrity(eid, user["user_id"])
+        if result:
+            action = "evidence_verified" if result["matches"] else "evidence_verification_failed"
+            from app.audit.services import log_action
+            log_action(
+                action=action,
+                entity_type="evidence",
+                entity_id=eid,
+                user_id=user["user_id"],
+                user_email=user["email"],
+                user_role=user["role"],
+                details=f"Bulk verification: {'INTACT' if result['matches'] else 'TAMPERED'}",
+            )
+            results.append(result)
+
+    intact = sum(1 for r in results if r["matches"])
+    tampered = sum(1 for r in results if not r["matches"])
+
+    return jsonify({
+        "results": results,
+        "summary": {"total": len(results), "intact": intact, "tampered": tampered},
+    })
+
+
+@evidence_bp.route("/export/evidence", methods=["GET"])
+@jwt_required()
+def export_evidence():
+    """Export evidence list as CSV."""
+    from flask import Response
+    from app.evidence.export import export_evidence_csv
+
+    case_id = request.args.get("case_id")
+    csv_data = export_evidence_csv(case_id)
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=evidence-export.csv"},
+    )
+
+
+@evidence_bp.route("/export/audit", methods=["GET"])
+@jwt_required()
+def export_audit():
+    """Export audit logs as CSV."""
+    from flask import Response
+    from app.evidence.export import export_audit_csv
+
+    csv_data = export_audit_csv()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=audit-logs-export.csv"},
+    )
+
+
+@evidence_bp.route("/export/cases", methods=["GET"])
+@jwt_required()
+def export_cases():
+    """Export cases list as CSV."""
+    from flask import Response
+    from app.evidence.export import export_cases_csv
+
+    csv_data = export_cases_csv()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=cases-export.csv"},
+    )
+
+
+@evidence_bp.route("/analytics", methods=["GET"])
+@jwt_required()
+def get_analytics():
+    """Return aggregated analytics for dashboard charts."""
+    from app.evidence.analytics import get_dashboard_analytics
+
+    return jsonify(get_dashboard_analytics())
 
 
 @evidence_bp.route("/<evidence_id>/trust-score", methods=["GET"])

@@ -81,7 +81,7 @@ def get_case(case_id):
 
 
 def update_case(case_id, updates):
-    allowed = {"title", "description", "status", "closing_reason", "closed_at", "closed_by", "closed_by_name"}
+    allowed = {"title", "description", "status", "closing_reason", "closed_at", "closed_by", "closed_by_name", "retention_days"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
         return None

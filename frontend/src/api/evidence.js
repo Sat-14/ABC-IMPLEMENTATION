@@ -31,3 +31,24 @@ export const previewEvidence = (evidenceId) =>
 
 export const getEvidenceTrustScore = (evidenceId) =>
   client.get(`/evidence/${evidenceId}/trust-score`)
+
+export const getAnalytics = () =>
+  client.get('/evidence/analytics')
+
+export const checkRetention = () =>
+  client.get('/evidence/retention/check')
+
+export const disposeEvidence = (evidenceId, reason) =>
+  client.post(`/evidence/${evidenceId}/dispose`, { reason })
+
+export const bulkVerify = (evidenceIds) =>
+  client.post('/evidence/bulk/verify', { evidence_ids: evidenceIds })
+
+export const exportEvidenceCSV = (caseId) =>
+  client.get('/evidence/export/evidence', { params: caseId ? { case_id: caseId } : {}, responseType: 'blob' })
+
+export const exportAuditCSV = () =>
+  client.get('/evidence/export/audit', { responseType: 'blob' })
+
+export const exportCasesCSV = () =>
+  client.get('/evidence/export/cases', { responseType: 'blob' })

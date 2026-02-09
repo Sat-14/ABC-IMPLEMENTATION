@@ -36,7 +36,8 @@ def store_evidence_file(file_obj, upload_folder):
 
 
 def create_evidence(file_path, original_name, file_size, file_type, case_id,
-                    category, classification, description, tags, uploaded_by_id):
+                    category, classification, description, tags, uploaded_by_id,
+                    latitude=None, longitude=None, collection_location=None):
     """Create evidence record with SHA-256 hash."""
     evidence_id = str(uuid.uuid4())
     original_hash = compute_sha256(file_path)
@@ -59,6 +60,9 @@ def create_evidence(file_path, original_name, file_size, file_type, case_id,
         "current_custodian_id": uploaded_by_id,
         "uploaded_by": uploaded_by_id,
         "status": "active",
+        "latitude": float(latitude) if latitude else None,
+        "longitude": float(longitude) if longitude else None,
+        "collection_location": collection_location or "",
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
@@ -118,7 +122,7 @@ def get_evidence(evidence_id):
 
 
 def update_evidence(evidence_id, updates):
-    allowed = {"description", "tags", "category", "classification", "status"}
+    allowed = {"description", "tags", "category", "classification", "status", "latitude", "longitude", "collection_location"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
         return None

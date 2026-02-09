@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Folder, Calendar, AlertTriangle, Clock } from 'lucide-react'
+import { Plus, Search, Folder, Calendar, AlertTriangle, Clock, Download } from 'lucide-react'
 import { getCases, createCase } from '../api/cases'
+import { exportCasesCSV } from '../api/evidence'
 import useAuth from '../hooks/useAuth'
 import { hasPermission } from '../utils/roles'
 import { formatDate } from '../utils/formatters'
@@ -26,6 +27,7 @@ export default function CasesPage() {
   const [selectedCase, setSelectedCase] = useState(null)
   const [closingReason, setClosingReason] = useState('')
   const [isClosing, setIsClosing] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const loadCases = async () => {
     setLoading(true)
@@ -51,6 +53,21 @@ export default function CasesPage() {
       loadCases()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create case')
+    }
+  }
+
+  const handleExportCases = async () => {
+    setExporting(true)
+    try {
+      const res = await exportCasesCSV()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch { /* silent */ } finally {
+      setExporting(false)
     }
   }
 
@@ -97,6 +114,14 @@ export default function CasesPage() {
               Closed
             </button>
           </div>
+          <button
+            onClick={handleExportCases}
+            disabled={exporting}
+            className="px-5 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] font-semibold rounded-xl hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
+          >
+            <Download className="w-4 h-4 text-[#3B82F6]" />
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
           {hasPermission(user?.role, 'upload') && (
             <Button onClick={() => setShowForm(!showForm)}>
               <Plus className="w-4 h-4" />

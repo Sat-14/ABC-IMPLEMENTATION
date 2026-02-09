@@ -16,7 +16,9 @@ import {
   AlertCircle,
   X,
   ArrowLeft,
-  Loader2
+  Loader2,
+  MapPin,
+  Navigation
 } from 'lucide-react'
 
 const CATEGORIES = [
@@ -49,6 +51,9 @@ export default function UploadEvidencePage() {
     classification: 'internal',
     description: '',
     tags: '',
+    latitude: '',
+    longitude: '',
+    collection_location: '',
   })
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -97,6 +102,9 @@ export default function UploadEvidencePage() {
     formData.append('classification', form.classification)
     formData.append('description', form.description)
     formData.append('tags', form.tags)
+    if (form.latitude) formData.append('latitude', form.latitude)
+    if (form.longitude) formData.append('longitude', form.longitude)
+    if (form.collection_location) formData.append('collection_location', form.collection_location)
 
     try {
       const res = await uploadEvidence(formData)
@@ -336,6 +344,63 @@ export default function UploadEvidencePage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Row 3: Collection Location (optional) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[12px] font-medium text-[#475569] ml-0.5">Collection Location</label>
+                  <div className="relative group">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8] pointer-events-none" />
+                    <input
+                      type="text"
+                      value={form.collection_location}
+                      onChange={(e) => setForm({ ...form, collection_location: e.target.value })}
+                      placeholder="e.g. 123 Main St, Office 4B"
+                      className="w-full h-10 pl-9 pr-3 bg-white border border-[#E2E8F0] rounded-lg text-[13px] text-[#334155] font-normal outline-none transition-all focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 hover:border-[#93C5FD] placeholder:text-[#94A3B8]"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[12px] font-medium text-[#475569] ml-0.5">Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.latitude}
+                    onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                    placeholder="e.g. 18.5204"
+                    className="w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg text-[13px] text-[#334155] font-normal outline-none transition-all focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 hover:border-[#93C5FD] placeholder:text-[#94A3B8]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-medium text-[#475569] ml-0.5">Longitude</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => setForm(f => ({ ...f, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) })),
+                            () => {},
+                            { enableHighAccuracy: true }
+                          )
+                        }
+                      }}
+                      className="text-[10px] font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Navigation className="w-3 h-3" />
+                      Use GPS
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.longitude}
+                    onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                    placeholder="e.g. 73.8567"
+                    className="w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg text-[13px] text-[#334155] font-normal outline-none transition-all focus:border-[#3B82F6] focus:ring-2 focus:ring-blue-100 hover:border-[#93C5FD] placeholder:text-[#94A3B8]"
+                  />
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Shield, Search, Filter, CheckCircle2, AlertCircle, Clock, Mail, Activity, Hash, ArrowLeftRight } from 'lucide-react'
+import { Shield, Search, Filter, CheckCircle2, AlertCircle, Clock, Mail, Activity, Hash, ArrowLeftRight, Download } from 'lucide-react'
 import { getAuditLogs, verifyAuditChain } from '../api/audit'
+import { exportAuditCSV } from '../api/evidence'
 import useAuth from '../hooks/useAuth'
 import { hasPermission } from '../utils/roles'
 import { formatDate } from '../utils/formatters'
@@ -15,6 +16,7 @@ export default function AuditLogPage() {
   const [filters, setFilters] = useState({ action: '', entity_type: '' })
   const [chainStatus, setChainStatus] = useState(null)
   const [verifyingChain, setVerifyingChain] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -34,6 +36,21 @@ export default function AuditLogPage() {
     }
     load()
   }, [page, filters])
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await exportAuditCSV()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch { /* silent */ } finally {
+      setExporting(false)
+    }
+  }
 
   const handleVerifyChain = async () => {
     setVerifyingChain(true)
@@ -55,20 +72,30 @@ export default function AuditLogPage() {
           <h1 className="text-2xl md:text-[32px] font-bold text-[#0F172A] leading-tight tracking-tight">Audit Log</h1>
           <p className="text-[16px] text-[#64748B] mt-1">Immutable record of system and evidence interactions</p>
         </div>
-        {hasPermission(user?.role, 'admin') && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleVerifyChain}
-            disabled={verifyingChain}
-            className="px-6 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] font-semibold rounded-xl hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-5 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] font-semibold rounded-xl hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
           >
-            {verifyingChain ? (
-              <Activity className="w-4 h-4 animate-spin" />
-            ) : (
-              <Shield className="w-4 h-4 text-[#3B82F6]" />
-            )}
-            {verifyingChain ? 'Verifying Chain...' : 'Verify Chain Integrity'}
+            <Download className="w-4 h-4 text-[#3B82F6]" />
+            {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
-        )}
+          {hasPermission(user?.role, 'admin') && (
+            <button
+              onClick={handleVerifyChain}
+              disabled={verifyingChain}
+              className="px-6 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] font-semibold rounded-xl hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {verifyingChain ? (
+                <Activity className="w-4 h-4 animate-spin" />
+              ) : (
+                <Shield className="w-4 h-4 text-[#3B82F6]" />
+              )}
+              {verifyingChain ? 'Verifying Chain...' : 'Verify Chain Integrity'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto w-full space-y-6">

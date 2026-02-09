@@ -1,5 +1,5 @@
 import { NavLink, Link } from 'react-router-dom'
-import { LayoutDashboard, FolderOpen, FileText, Upload, ArrowRightLeft, History, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, FolderOpen, FileText, Upload, ArrowRightLeft, History, Clock, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { clsx } from 'clsx'
 import useAuth from '../../hooks/useAuth'
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/evidence/upload', label: 'Upload Evidence', icon: Upload, permission: 'upload' },
   { path: '/transfers', label: 'Transfers', icon: ArrowRightLeft, permission: 'view' },
   { path: '/audit', label: 'Audit Log', icon: History, permission: 'view' },
+  { path: '/retention', label: 'Retention', icon: Clock, permission: 'view' },
 ]
 
 export default function Sidebar({ collapsed, setCollapsed, isMobile, mobileOpen, setMobileOpen }) {
