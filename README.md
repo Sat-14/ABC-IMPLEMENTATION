@@ -56,6 +56,31 @@ This system provides a tamper-proof, cryptographically verifiable trail for digi
 *   **Geo-Tagging**: Supports latitude/longitude for collection location.
 *   **Role-Based Access Control**: 6 distinct roles with granular permissions.
 
+### 7. Interactive Dashboard with Real-Time Analytics
+*   **Evidence by Category**: Pie chart distribution across categories.
+*   **Integrity Status Distribution**: Donut chart for `intact`, `tampered`, `unverified`.
+*   **Upload Trends (30 Days)**: Area chart of evidence upload activity.
+*   **Weekly Activity (7 Days)**: Bar chart of system actions per day.
+*   **Transfers by Status**: Horizontal bar chart of transfer states.
+*   **Cases by Status**: Pie chart of `open`, `closed`, `archived` cases.
+*   **Summary Stats**: Total evidence, total storage, tampered item alerts.
+
+### 8. Evidence Retention & Disposal Policy Engine
+*   **Automated Policy Checks**: Scans evidence against case-based retention rules.
+*   **Configurable Retention Periods**: Open (no limit), Closed (365 days), Archived (180 days).
+*   **Flagging & Alerts**: Evidence nearing expiry is flagged for review.
+*   **Disposal Workflow**: Secure disposal with full audit trail.
+
+### 9. PDF Report Generation (Legal-Grade)
+*   **Chain of Custody Reports**: Detailed PDF reports for individual evidence items.
+*   **Case Reports**: Aggregate reports for entire cases with all linked evidence.
+*   **Built with ReportLab**: Professional A4-formatted documents.
+
+### 10. In-App Notification System
+*   **Real-Time Alerts**: Notifications for transfers, approvals, rejections, integrity alerts.
+*   **Read/Unread Tracking**: Mark notifications as read; filter by unread.
+*   **Deep Links**: Click notifications to jump directly to the relevant item.
+
 ---
 
 ## System Architecture
