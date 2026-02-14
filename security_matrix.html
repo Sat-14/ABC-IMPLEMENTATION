@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Matrix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#0B0E1E', // Deep background
+                            800: '#151A30', // Card background
+                            700: '#1E2542', // Row/element bg
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0E1E;
+            color: white;
+        }
+        .glossy-card {
+            background: rgba(21, 26, 48, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .glow-text {
+            text-shadow: 0 0 20px rgba(162, 162, 255, 0.3);
+        }
+        .icon-glow-green {
+            filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.5));
+        }
+        .icon-glow-red {
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+        }
+        .row-hover:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-8">
+
+    <!-- Header -->
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-bold mb-3 text-white glow-text tracking-tight">Security Matrix</h1>
+        <p class="text-gray-400 text-lg">Role-Based Access Control (RBAC) Permissions</p>
+    </div>
+
+    <!-- Matrix Card -->
+    <div class="glossy-card rounded-3xl p-8 w-full max-w-6xl overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="text-gray-400 text-xs font-bold uppercase tracking-wider border-b border-gray-800">
+                    <th class="py-6 px-6">Role</th>
+                    <th class="py-6 px-6 text-center">Upload</th>
+                    <th class="py-6 px-6 text-center">View</th>
+                    <th class="py-6 px-6 text-center">Transfer</th>
+                    <th class="py-6 px-6 text-center">Verify</th>
+                    <th class="py-6 px-6 text-center">Delete</th>
+                    <th class="py-6 px-6 text-center">Admin</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm">
+                <!-- Admin -->
+                <tr class="border-b border-gray-800/50 row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Admin
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                </tr>
+
+                <!-- Investigator -->
+                <tr class="border-b border-gray-800/50 row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Investigator
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                </tr>
+
+                <!-- Forensic Analyst -->
+                <tr class="border-b border-gray-800/50 row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Forensic Analyst
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                </tr>
+
+                <!-- Prosecutor -->
+                <tr class="border-b border-gray-800/50 row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Prosecutor
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                </tr>
+
+                <!-- Judge -->
+                <tr class="border-b border-gray-800/50 row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Judge
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                </tr>
+
+                <!-- Auditor -->
+                <tr class="row-hover transition-colors">
+                    <td class="py-6 px-6 font-semibold flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></span>
+                        Auditor
+                    </td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-check text-green-500 text-lg icon-glow-green"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                    <td class="py-6 px-6 text-center"><i class="fas fa-times text-red-500/50 text-lg icon-glow-red"></i></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
